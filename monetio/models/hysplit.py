@@ -38,9 +38,9 @@ Change log
 2023 03 Mar  AMC  get_latlon modified. replace x>=180 with x>=180+lon_tolerance
 2023 03 Mar  AMC  get_latlongrid improved exception statements
 2023 08 Dec  AMC  add check_attributes to ModelBin and combine_datatset to make sure level height attribute is a list
-2024 04 Mar  AMC  fixed bug in combine_dataset. align was not working properly with time coordinate in datetime64 when
-                  datasets did not cover the same time periods. Add time2index and index2time functions to help.
-2024 04 Mar  AMC  fixed bug in combine_dataset. Did not combine properly when length of ensemble and source lists > 1.
+2024 01 Apr  AMC  added logging. for combine_dataset add continue to exception so it won't fail.
+2024 04 Mar  AMC  bug fixes to combine_dataset 
+
 """
 import datetime
 import sys
@@ -48,6 +48,9 @@ import sys
 import numpy as np
 import pandas as pd
 import xarray as xr
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def open_dataset(
@@ -102,11 +105,14 @@ def open_dataset(
         readwrite="r",
         sample_time_stamp=sample_time_stamp,
     )
-    dset = binfile.dset
-    if check_grid:
-        return fix_grid_continuity(dset)
+    if binfile.dataflag:
+        dset = binfile.dset
+        if check_grid:
+            return fix_grid_continuity(dset)
+        else:
+            return dset
     else:
-        return dset
+        return xr.Dataset()
 
 
 def check_drange(drange, pdate1, pdate2):
@@ -201,7 +207,7 @@ class ModelBin:
 
         if readwrite == "r":
             if verbose:
-                print("reading " + filename)
+                logger.info("reading " + filename)
             self.dataflag = self.readfile(filename, drange, verbose=verbose, century=century)
 
     @staticmethod
@@ -341,12 +347,14 @@ class ModelBin:
            number of starting locations in file.
         """
         if len(hdata1["start_loc"]) != 1:
-            print("WARNING in ModelBin _readfile - number of starting locations " "incorrect")
-            print(hdata1["start_loc"])
+            logger.warning("WARNING in ModelBin {} _readfile - number of starting locations incorrect".format(self.filename))
+            logger.warning(str(hdata1["start_loc"]))
+            return None 
         # in python 3 np.fromfile reads the record into a list even if it is
         # just one number.
         # so if the length of this record is greater than one something is
         # wrong.
+        # if it is empty or 0 then the cdump file is probably empty as well.
         nstartloc = hdata1["start_loc"][0]
         self.atthash["Meteorological Model ID"] = hdata1["model_id"][0].decode("UTF-8")
         self.atthash["Number Start Locations"] = nstartloc
@@ -370,7 +378,7 @@ class ModelBin:
                     century = 2000
                 else:
                     century = 1900
-                print("WARNING: Guessing Century for HYSPLIT concentration file", century)
+                logger.info("WARNING: Guessing Century for HYSPLIT concentration file {}".format(century))
             # add sourcedate which is datetime.datetime object
             sourcedate = datetime.datetime(
                 century + hdata2["r_year"][nnn],
@@ -415,14 +423,14 @@ class ModelBin:
             int(hdata6["omonth"][0]),
             int(hdata6["oday"][0]),
             int(hdata6["ohr"][0]),
-            int(hdata6["omin"][0]),
+            int(hdata6["omin"][0])
         )
         pdate2 = datetime.datetime(
             century + int(hdata7["oyear"][0]),
             int(hdata7["omonth"][0]),
             int(hdata7["oday"][0]),
             int(hdata7["ohr"][0]),
-            int(hdata7["omin"][0]),
+            int(hdata7["omin"][0])
         )
         dt = pdate2 - pdate1
         sample_dt = dt.days * 24 + dt.seconds / 3600.0
@@ -533,7 +541,7 @@ class ModelBin:
         # Reads header data. This consists of records 1-5.
         hdata1 = np.fromfile(fid, dtype=rec1, count=1)
         nstartloc = self.parse_header(hdata1)
-
+        if nstartloc is None: return False
         hdata2 = np.fromfile(fid, dtype=rec2, count=nstartloc)
         century = self.parse_hdata2(hdata2, nstartloc, century)
 
@@ -631,7 +639,7 @@ class ModelBin:
             #  imax iterations.
             if iimax > imax:
                 testf = False
-                print("greater than imax", testf, iimax, imax)
+                logger.warning("greater than imax {},{},{}".format(testf, iimax, imax))
             if inc_iii:
                 iii += 1
 
@@ -656,6 +664,99 @@ class ModelBin:
             return False
         return True
 
+class CombineObject:
+    """
+    Helper class for combine_dataset function. 
+    """
+
+
+    def __init__(self,blist,drange=None,century=None,sample_time_stamp='start'):
+        self.fname = blist[0]
+        self.source = blist[1]
+        self.ens = blist[2]
+        self.hxr = self.open(self.fname,drange,century,sample_time_stamp)
+        self._attrs = {}
+        if not self.empty: self.attrs = self.hxr.attrs
+        self.xrash = xr.DataArray() # created in process method. 
+
+    def grid_equal(self,other):
+        # other: another CombineObject object.
+        # checks to see if grid is equal
+        mlat, mlon = self.grid_definition
+        mlat2, mlon2 = other.grid_definition
+        if not np.array_equal(mlat,mlat2): 
+           return False
+        if not np.array_equal(mlon,mlon2):
+           return False
+        return True
+
+    def __lt__(self,other):
+        if self.start_time < other.start_time: 
+           return True
+        if self.source < other.source:
+           return True
+        if self.ens < other.ens:
+           return True      
+        return False
+
+    @property
+    def empty(self):
+        if self.hxr.coords:
+           return False
+        else:
+           return True
+
+    @property   
+    def attrs(self):
+        return self._attrs
+
+    @attrs.setter
+    def attrs(self,atthash):
+        if isinstance(atthash,dict):
+           self._attrs.update(atthash)
+        
+
+    @property
+    def start_time(self):
+        tvals = self.hxr.time.values
+        tvals.sort()
+        return tvals[0]
+
+    @property
+    def grid_definition(self):
+        return  getlatlon(self.hxr.attrs)
+
+    def process(self,stime=None,dt=None,species=None):
+        """
+        add species, change time coordinate to an integer for alignment.
+        """
+        xrash = add_species(self.hxr,species=species)
+        xrash = time2index(xrash,stime,dt)
+        xrash = xrash.drop_vars('time_values')
+        self.xrash = xrash
+        self.attrs = self.xrash.attrs
+    
+    @staticmethod
+    def open(fname,drange,century,sample_time_stamp='start',verbose=False):
+        if drange:
+            century = int(drange[0].year / 100) * 100
+            hxr = open_dataset(
+                fname,
+                drange=drange,
+                century=century,
+                verbose=verbose,
+                sample_time_stamp=sample_time_stamp,
+                check_grid=False,
+            )
+        else:  # use all dates
+            hxr = open_dataset(
+                fname,
+                century=century,
+                verbose=verbose,
+                sample_time_stamp=sample_time_stamp,
+                check_grid=False,
+            )
+        return hxr
 
 def combine_dataset(
     blist,
@@ -688,6 +789,8 @@ def combine_dataset(
     only those species will be added.
 
     Files need to have the same concentration grid defined.
+    If files have no concentrations then they will be skipped.
+
     """
     # 2024 04 March. when the input datasets did not have identical time coordinates, the align method of
     #                xarray was not working properly. Changing the time coordinate to an integer first
@@ -696,153 +799,72 @@ def combine_dataset(
     #                had length of 1. Did not work properly with multiple sources and multiple ensembles.
     #                to fix this changed how enslist and sourcelist were defined and utilized.
 
-    mlat_p = mlon_p = None
-    ylist = []
-    dtlist = []
-    splist = []
-    sourcelist = []
-    # turn the input list int a dictionary
-    #  blist : dictionary.
-    #  key is a tag indicating the source
-    #  value is tuple (filename, metdata)
-    aaa = sorted(blist, key=lambda x: x[1])
-    nnn = len(blist)
-    blist = {}
-    for val in aaa:
-        if val[1] in blist.keys():
-            blist[val[1]].append((val[0], val[2]))
+
+    # create list of datasets to be combined and their properties.
+    # removes any cdumps that are empty.
+    xlist = []   # list of CombineObject objects
+    for bbb in blist:
+        cobject = CombineObject(bbb,drange,century,sample_time_stamp) 
+        print('empty?', cobject.empty, cobject.hxr.coords) 
+        if not cobject.empty:
+           xlist.append(cobject)
         else:
-            blist[val[1]] = [(val[0], val[2])]
+           logger.warning('could not open {}'.format(bbb[0]))
 
-    # mgrid = []
-    # first loop go through to get expanded dataset.
-    xlist = []
-    sourcelist = np.empty(shape=(nnn,nnn),dtype=object)
-    enslist = np.empty(shape=(nnn,nnn),dtype=object)
-    for iii, key in enumerate(blist):
-        # fname = val[0]
-        xsublist = []
-        for jjj, fname in enumerate(blist[key]):
-            if drange:
-                century = int(drange[0].year / 100) * 100
-                hxr = open_dataset(
-                    fname[0],
-                    drange=drange,
-                    century=century,
-                    verbose=verbose,
-                    sample_time_stamp=sample_time_stamp,
-                    check_grid=False,
-                )
-            else:  # use all dates
-                hxr = open_dataset(
-                    fname[0],
-                    century=century,
-                    verbose=verbose,
-                    sample_time_stamp=sample_time_stamp,
-                    check_grid=False,
-                )
-            try:
-                mlat, mlon = getlatlon(hxr.attrs)
-            except Exception:
-                print("WARNING Cannot open ")
-                print(fname[0])
-                print(century)
-                print(hxr)
-            if iii > 0:
-                tt1 = np.array_equal(mlat, mlat_p)
-                tt2 = np.array_equal(mlon, mlon_p)
-                if not tt1 or not tt2:
-                    print("WARNING: grids are not the same. cannot combine")
-                    sys.exit()
-            mlat_p = mlat
-            mlon_p = mlon
+    print(xlist[1:]) 
+    # check that grids are equal by comparing each grid to the one before.
+    for iii, xobj in enumerate(xlist[1:]):
+        if not xobj.grid_equal(xlist[iii]): 
+           logger.warning("WARNING: grids are not the same. cannot combine")
+           sys.exit()
 
-            # lon = hxr.longitude.isel(y=0).values
-            # lat = hxr.latitude.isel(x=0).values
-            xrash = add_species(hxr, species=species)
-            if iii==0 and jjj==0:        
-               tvals = xrash.time.values
-               tvals.sort()
-               stime = tvals[0]
-            # make the time index integers 
-            xrash = time2index(xrash,stime,dt=1)
-            xrash = xrash.drop_vars('time_values')
-            xsublist.append(xrash)
-            enslist[iii][jjj] = fname[1]
-            sourcelist[iii][jjj] = key
-            dtlist.append(hxr.attrs["sample time hours"])
-            splist.extend(xrash.attrs["Species ID"])
-            if iii == 0:
-                xnew = xrash.copy()
-            else:
-                aaa, xnew = xr.align(xrash, xnew, join="outer")
-                xnew = xnew.fillna(0)
-            # iii += 1
-        xlist.append(xsublist)
-    # if verbose:
-    #    print("aligned --------------------------------------")
-    # xnew is now encompasses the area of all the data-arrays
-    # now go through and expand each one to the size of xnew.
-    # iii = 0
-    # jjj = 0
-    #import sys
-    #sys.exit()
-    ylist = []
+    xlist.sort()
+    # use earliest time               
+    svals = [x.start_time for x in xlist]
+    svals.sort()
+    print(svals)
+    stime = svals[0]
+    # process the data-arrays to be combined.
+    # change time coordinate to index, sum species.
+    [x.process(stime,dt=1,species=species) for x in xlist]
+
+    # align to get biggest grid
+    xbig = xlist[0].xrash.copy()
+    for xobj in xlist[1:]:
+        aaa, xbig = xr.align(xobj.xrash,xbig,join='outer')
+        
+    #First group and concatenate along ensemble dimension.
+    sourcelist = list(set([x.source for x in xlist]))
+    outlist = []
     slist = []
-    for iii, sublist in enumerate(xlist):
-        hlist = []
-        for jjj, temp in enumerate(sublist):
-            # expand to same region as xnew
-            aaa, bbb = xr.align(temp, xnew, join="outer")
+    for source in sourcelist:
+        # get all objects with that source
+        elist = [x for x in xlist if x.source==source]
+        inlist = []
+        for eee in elist:
+            aaa, junk = xr.align(eee.xrash,xbig,join='outer')
             aaa = aaa.fillna(0)
-            bbb = bbb.fillna(0)
-            aaa.expand_dims("ens")
-            aaa["ens"] = enslist[iii][jjj]
-            # iii += 1
-            hlist.append(aaa)
-        # concat along the 'ens' axis
-        new = xr.concat(hlist, "ens")
-        ylist.append(new)
-        slist.append(sourcelist[iii][jjj])
-        # jjj += 1
-    if dtlist:
-        dtlist = list(set(dtlist))
-        dt = dtlist[0]
+            aaa.expand_dims('ens')
+            aaa['ens'] = eee.ens
+            inlist.append(aaa)
+        # concat on ensemble dimension
+        inner = xr.concat(inlist,'ens')
+        outlist.append(inner)
+    # concat on source dimension 
+    newhxr = xr.concat(outlist,'source')
+    newhxr['source'] = sourcelist
 
-    newhxr = xr.concat(ylist, "source")
-    newhxr["source"] = slist
-    # newhxr['ens'] = metlist
-
-    # newhxr is an xarray data-array with 6 dimensions.
-    # dt is the averaging time of the hysplit output.
-    newhxr = newhxr.assign_attrs({"sample time hours": dt})
-    newhxr = newhxr.assign_attrs({"Species ID": list(set(splist))})
-    newhxr.attrs.update(hxr.attrs)
-    keylist = ["time description"]
-
-    # calculate the lat lon grid for the expanded dataset.
-    # and use that for the new coordinates.
-    newhxr = reset_latlon_coords(newhxr)
-
-    # make sure all np.ndarrray in the attributes are converted to lists.
-    # the np arrays don't save well to netcdf file for some reason.
-    attrs = check_attributes(hxr.attrs)
+    atthash = xlist[0].hxr.attrs
+    attrs = check_attributes(atthash)
     newhxr = newhxr.assign_attrs(attrs)
-    #for key in keylist:
-    #    newhxr = newhxr.assign_attrs({key: hxr.attrs[key]})
+    newhxr = reset_latlon_coords(newhxr)
+    newhxr = index2time(newhxr)
     if check_grid:
-        rval = fix_grid_continuity(newhxr)
+       rval = fix_grid_continuity(newhxr)
     else:
-        rval = newhxr
-    rval = index2time(rval)
+       rval = newhxr 
     return rval
 
-
-# This function seems not useful.
-# def get_even_latlongrid(dset, xlim, ylim):
-#    xindx = np.arange(xlim[0], xlim[1] + 1)
-#    yindx = np.arange(ylim[0], ylim[1] + 1)
-#    return get_latlongrid(dset, xindx, yindx)
 def get_time_index(timevals,stime,dt):
     """
     timevals : list of datetimes
@@ -910,19 +932,6 @@ def index2time(hxr):
         hxr = hxr.assign_coords(time=('time',tvals))
     return hxr 
 
-
-def reset_time_coord(hxr):
-    atts = hxr.attrs
-    if 'coordinate start time' in atts.keys():
-        stime = pd.to_datetime(atts['coordinate start time'])
-    if 'coordinate time dt (hours)' in atts.keys():
-        dt = atts['coordinate time dt (hours)']
-    index_values = hxr.t.values
-    tvals = get_time_values(index_values,stime,dt)
-    if 'time' in hxr.coords:
-        hxr.drop_vars('time')
-    hxr = hxr.assign_coords(time=("t",tvals))
-    return hxr
 
 
 def reset_latlon_coords(hxr):
@@ -1022,19 +1031,19 @@ def get_latlongrid(attrs, xindx, yindx):
         lonlist = [lon[x - 1] for x in xindx]
         # latlist = [lat[x - 1] for x in yindx]
     except Exception as eee:
-        print(f"Exception {eee}")
-        print("try increasing Number Number Lon Points")
-        print(attrs)
-        print(xindx)
+        logger.warning(f"Exception {eee}")
+        logger.warning("try increasing Number Number Lon Points")
+        #(attrs)
+        #print(xindx)
         success = False
     try:
         # lonlist = [lon[x - 1] for x in xindx]
         latlist = [lat[x - 1] for x in yindx]
     except Exception as eee:
-        print(f"Exception {eee}")
-        print("try increasing Number Number Lat Points")
-        print(attrs)
-        print(yindx)
+        logger.warning(f"Exception {eee}")
+        logger.warning("try increasing Number Number Lat Points")
+        #print(attrs)
+        #print(yindx)
         success = False
 
     if not success:
@@ -1201,7 +1210,7 @@ def add_species(dset, species=None):
                 warn = "WARNING: hysplit.add_species function"
                 warn += ": species not found" + str(val) + "\n"
                 warn += " valid species ids are " + str.join(", ", splist)
-                print(warn)
+                logger.warning(warn)
     sss = 0
     tmp = []
     # Looping through all species in dataset
@@ -1231,7 +1240,7 @@ def calculate_thickness(cdump):
     for avalue in alts:
         thash[avalue] = avalue - aaa
         aaa = avalue
-    print(f"WARNING: thickness calculated from z values please verify {thash}")
+    logger.warning(f"WARNING: thickness calculated from z values please verify {thash}")
     return thash
 
 
@@ -1262,8 +1271,8 @@ def get_thickness(cdump):
                 calculate = True
 
     if calculate:
-        print(f"warning: {cstr} attribute needed to calculate level thicknesses")
-        print("warning: alternative calculation from z dimension values")
+        logger.warning(f"warning: {cstr} attribute needed to calculate level thicknesses")
+        logger.warning("warning: alternative calculation from z dimension values")
         thash = calculate_thickness(cdump)
     else:
         levs = cdump.attrs[cstr]
