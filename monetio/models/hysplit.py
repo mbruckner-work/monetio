@@ -38,8 +38,9 @@ Change log
 2023 03 Mar  AMC  get_latlon modified. replace x>=180 with x>=180+lon_tolerance
 2023 03 Mar  AMC  get_latlongrid improved exception statements
 2023 08 Dec  AMC  add check_attributes to ModelBin and combine_datatset to make sure level height attribute is a list
-
-
+2024 04 Mar  AMC  fixed bug in combine_dataset. align was not working properly with time coordinate in datetime64 when
+                  datasets did not cover the same time periods. Add time2index and index2time functions to help.
+2024 04 Mar  AMC  fixed bug in combine_dataset. Did not combine properly when length of ensemble and source lists > 1.
 """
 import datetime
 import sys
@@ -688,7 +689,13 @@ def combine_dataset(
 
     Files need to have the same concentration grid defined.
     """
-    # iii = 0
+    # 2024 04 March. when the input datasets did not have identical time coordinates, the align method of
+    #                xarray was not working properly. Changing the time coordinate to an integer first
+    #                fixes the problem. 
+    #                Another issue is that the combination only worked when either the source or the ensemble dimension
+    #                had length of 1. Did not work properly with multiple sources and multiple ensembles.
+    #                to fix this changed how enslist and sourcelist were defined and utilized.
+
     mlat_p = mlon_p = None
     ylist = []
     dtlist = []
@@ -699,6 +706,7 @@ def combine_dataset(
     #  key is a tag indicating the source
     #  value is tuple (filename, metdata)
     aaa = sorted(blist, key=lambda x: x[1])
+    nnn = len(blist)
     blist = {}
     for val in aaa:
         if val[1] in blist.keys():
@@ -709,12 +717,12 @@ def combine_dataset(
     # mgrid = []
     # first loop go through to get expanded dataset.
     xlist = []
-    sourcelist = []
-    enslist = []
+    sourcelist = np.empty(shape=(nnn,nnn),dtype=object)
+    enslist = np.empty(shape=(nnn,nnn),dtype=object)
     for iii, key in enumerate(blist):
         # fname = val[0]
         xsublist = []
-        for fname in blist[key]:
+        for jjj, fname in enumerate(blist[key]):
             if drange:
                 century = int(drange[0].year / 100) * 100
                 hxr = open_dataset(
@@ -752,8 +760,16 @@ def combine_dataset(
             # lon = hxr.longitude.isel(y=0).values
             # lat = hxr.latitude.isel(x=0).values
             xrash = add_species(hxr, species=species)
+            if iii==0 and jjj==0:        
+               tvals = xrash.time.values
+               tvals.sort()
+               stime = tvals[0]
+            # make the time index integers 
+            xrash = time2index(xrash,stime,dt=1)
+            xrash = xrash.drop_vars('time_values')
             xsublist.append(xrash)
-            enslist.append(fname[1])
+            enslist[iii][jjj] = fname[1]
+            sourcelist[iii][jjj] = key
             dtlist.append(hxr.attrs["sample time hours"])
             splist.extend(xrash.attrs["Species ID"])
             if iii == 0:
@@ -762,7 +778,6 @@ def combine_dataset(
                 aaa, xnew = xr.align(xrash, xnew, join="outer")
                 xnew = xnew.fillna(0)
             # iii += 1
-        sourcelist.append(key)
         xlist.append(xsublist)
     # if verbose:
     #    print("aligned --------------------------------------")
@@ -770,23 +785,25 @@ def combine_dataset(
     # now go through and expand each one to the size of xnew.
     # iii = 0
     # jjj = 0
+    #import sys
+    #sys.exit()
     ylist = []
     slist = []
-    for jjj, sublist in enumerate(xlist):
+    for iii, sublist in enumerate(xlist):
         hlist = []
-        for iii, temp in enumerate(sublist):
+        for jjj, temp in enumerate(sublist):
             # expand to same region as xnew
             aaa, bbb = xr.align(temp, xnew, join="outer")
             aaa = aaa.fillna(0)
             bbb = bbb.fillna(0)
             aaa.expand_dims("ens")
-            aaa["ens"] = enslist[iii]
+            aaa["ens"] = enslist[iii][jjj]
             # iii += 1
             hlist.append(aaa)
         # concat along the 'ens' axis
         new = xr.concat(hlist, "ens")
         ylist.append(new)
-        slist.append(sourcelist[jjj])
+        slist.append(sourcelist[iii][jjj])
         # jjj += 1
     if dtlist:
         dtlist = list(set(dtlist))
@@ -817,6 +834,7 @@ def combine_dataset(
         rval = fix_grid_continuity(newhxr)
     else:
         rval = newhxr
+    rval = index2time(rval)
     return rval
 
 
@@ -825,6 +843,86 @@ def combine_dataset(
 #    xindx = np.arange(xlim[0], xlim[1] + 1)
 #    yindx = np.arange(ylim[0], ylim[1] + 1)
 #    return get_latlongrid(dset, xindx, yindx)
+def get_time_index(timevals,stime,dt):
+    """
+    timevals : list of datetimes
+    stime    : start time of time grid
+    dt       : integer - time resolution in hours of time grid.
+    """
+    def apply(ttt):
+        diff = pd.to_datetime(ttt)-stime
+        dh = diff.days*24 + diff.seconds/3600
+        iii = dh/dt
+        return int(iii)
+    return [apply(x) for x in timevals]   
+
+def get_time_values(index_values,stime,dt):
+    def apply(iii):
+        ddd = stime + datetime.timedelta(hours=float(iii))
+        return ddd
+    return [apply(x) for x in index_values]   
+
+def time2index(hxr,stime=None,dt=1):
+    """
+    hxr : xarray DataSet as output from open_dataset or combine_dataset
+    make the time
+
+    """
+    stime_str = 'coordinate start time'
+    dt_str = 'coordinate time dt (hours)'
+    tvals = hxr.time.values
+    if stime is None:
+       stime = tvals[0]
+    ilist = get_time_index(tvals,stime,dt)
+    # create a time_index coordinate.
+    hxr = hxr.drop_vars('time')
+    hxr = hxr.assign_coords(time=('time',ilist))
+    hxr = hxr.assign_coords(time_values=('time',tvals))
+    atthash = {stime_str: stime}
+    atthash[dt_str] = dt
+    hxr.attrs.update(atthash)
+    #temp = temp.drop_vars('time')
+    #temp = temp.assign_coords(time=('t',tvals))
+    return hxr
+
+def index2time(hxr):
+    """
+    hxr : DataSet or DataArray with time coordinate in integer values.
+          should either have a time_values coordinate or attribute defining
+          coordinate start time and coordinate time delta.
+    Reverses changes made in time2index
+    """
+    if 'time_values' in hxr.coords:
+       tvals = hxr.time_values.values
+       hxr = hxr.drop_vars('time')
+       hxr = hxr.drop_vars('time_values')
+       hxr = hxr.assign_coords(time=('time',tvals))
+    else:
+        stime_str = 'coordinate start time'
+        dt_str = 'coordinate time dt (hours)'
+        if stime_str in hxr.attrs.keys():
+           stime = pd.to_datetime(hxr.attrs[stime_str])
+        if dt_str in hxr.attrs.keys():
+           dt = hxr.attrs[dt_str]
+        ilist = hxr.time.values
+        tvals = get_time_values(ilist,stime,dt) 
+        hxr = hxr.drop_vars('time')
+        hxr = hxr.assign_coords(time=('time',tvals))
+    return hxr 
+
+
+def reset_time_coord(hxr):
+    atts = hxr.attrs
+    if 'coordinate start time' in atts.keys():
+        stime = pd.to_datetime(atts['coordinate start time'])
+    if 'coordinate time dt (hours)' in atts.keys():
+        dt = atts['coordinate time dt (hours)']
+    index_values = hxr.t.values
+    tvals = get_time_values(index_values,stime,dt)
+    if 'time' in hxr.coords:
+        hxr.drop_vars('time')
+    hxr = hxr.assign_coords(time=("t",tvals))
+    return hxr
 
 
 def reset_latlon_coords(hxr):
