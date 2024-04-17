@@ -347,9 +347,13 @@ class ModelBin:
            number of starting locations in file.
         """
         if len(hdata1["start_loc"]) != 1:
-            logger.warning("WARNING in ModelBin {} _readfile - number of starting locations incorrect".format(self.filename))
+            logger.warning(
+                "WARNING in ModelBin {} _readfile - number of starting locations incorrect".format(
+                    self.filename
+                )
+            )
             logger.warning(str(hdata1["start_loc"]))
-            return None 
+            return None
         # in python 3 np.fromfile reads the record into a list even if it is
         # just one number.
         # so if the length of this record is greater than one something is
@@ -378,7 +382,9 @@ class ModelBin:
                     century = 2000
                 else:
                     century = 1900
-                logger.info("WARNING: Guessing Century for HYSPLIT concentration file {}".format(century))
+                logger.info(
+                    "WARNING: Guessing Century for HYSPLIT concentration file {}".format(century)
+                )
             # add sourcedate which is datetime.datetime object
             sourcedate = datetime.datetime(
                 century + hdata2["r_year"][nnn],
@@ -423,14 +429,14 @@ class ModelBin:
             int(hdata6["omonth"][0]),
             int(hdata6["oday"][0]),
             int(hdata6["ohr"][0]),
-            int(hdata6["omin"][0])
+            int(hdata6["omin"][0]),
         )
         pdate2 = datetime.datetime(
             century + int(hdata7["oyear"][0]),
             int(hdata7["omonth"][0]),
             int(hdata7["oday"][0]),
             int(hdata7["ohr"][0]),
-            int(hdata7["omin"][0])
+            int(hdata7["omin"][0]),
         )
         dt = pdate2 - pdate1
         sample_dt = dt.days * 24 + dt.seconds / 3600.0
@@ -541,7 +547,8 @@ class ModelBin:
         # Reads header data. This consists of records 1-5.
         hdata1 = np.fromfile(fid, dtype=rec1, count=1)
         nstartloc = self.parse_header(hdata1)
-        if nstartloc is None: return False
+        if nstartloc is None:
+            return False
         hdata2 = np.fromfile(fid, dtype=rec2, count=nstartloc)
         century = self.parse_hdata2(hdata2, nstartloc, century)
 
@@ -629,7 +636,7 @@ class ModelBin:
                             # then merge with main dataframe.
                             # self.dset = xr.concat([self.dset, dset],'levels')
                             # self.dset = xr.merge([self.dset, dset],compat='override')
-                            self.dset = xr.merge([self.dset, dset],join='outer')
+                            self.dset = xr.merge([self.dset, dset], join="outer")
                             # self.dset = xr.combine_by_coords([self.dset, dset])
                             # self.dset = xr.merge([self.dset, dset], compat='override')
                         iimax += 1
@@ -664,57 +671,57 @@ class ModelBin:
             return False
         return True
 
+
 class CombineObject:
     """
-    Helper class for combine_dataset function. 
+    Helper class for combine_dataset function.
     """
 
-
-    def __init__(self,blist:tuple,drange=None,century=None,sample_time_stamp='start'):
+    def __init__(self, blist: tuple, drange=None, century=None, sample_time_stamp="start"):
         self.fname = blist[0]
         self.source = blist[1]
         self.ens = blist[2]
-        self.hxr = self.open(self.fname,drange,century,sample_time_stamp)
+        self.hxr = self.open(self.fname, drange, century, sample_time_stamp)
         self._attrs = {}
-        if not self.empty: self.attrs = self.hxr.attrs
-        self.xrash = xr.DataArray() # created in process method. 
+        if not self.empty:
+            self.attrs = self.hxr.attrs
+        self.xrash = xr.DataArray()  # created in process method.
 
-    def grid_equal(self,other):
+    def grid_equal(self, other):
         # other: another CombineObject object.
         # checks to see if grid is equal
         mlat, mlon = self.grid_definition
         mlat2, mlon2 = other.grid_definition
-        if not np.array_equal(mlat,mlat2): 
-           return False
-        if not np.array_equal(mlon,mlon2):
-           return False
+        if not np.array_equal(mlat, mlat2):
+            return False
+        if not np.array_equal(mlon, mlon2):
+            return False
         return True
 
-    def __lt__(self,other):
-        if self.start_time < other.start_time: 
-           return True
+    def __lt__(self, other):
+        if self.start_time < other.start_time:
+            return True
         if self.source < other.source:
-           return True
+            return True
         if self.ens < other.ens:
-           return True      
+            return True
         return False
 
     @property
     def empty(self):
         if self.hxr.coords:
-           return False
+            return False
         else:
-           return True
+            return True
 
-    @property   
+    @property
     def attrs(self):
         return self._attrs
 
     @attrs.setter
-    def attrs(self,atthash):
-        if isinstance(atthash,dict):
-           self._attrs.update(atthash)
-        
+    def attrs(self, atthash):
+        if isinstance(atthash, dict):
+            self._attrs.update(atthash)
 
     @property
     def start_time(self):
@@ -724,20 +731,20 @@ class CombineObject:
 
     @property
     def grid_definition(self):
-        return  getlatlon(self.hxr.attrs)
+        return getlatlon(self.hxr.attrs)
 
-    def process(self,stime=None,dt=None,species=None):
+    def process(self, stime=None, dt=None, species=None):
         """
         add species, change time coordinate to an integer for alignment.
         """
-        xrash = add_species(self.hxr,species=species)
-        xrash = time2index(xrash,stime,dt)
-        xrash = xrash.drop_vars('time_values')
+        xrash = add_species(self.hxr, species=species)
+        xrash = time2index(xrash, stime, dt)
+        xrash = xrash.drop_vars("time_values")
         self.xrash = xrash
         self.attrs = self.xrash.attrs
-    
+
     @staticmethod
-    def open(fname,drange,century,sample_time_stamp='start',verbose=False):
+    def open(fname, drange, century, sample_time_stamp="start", verbose=False):
         if drange:
             century = int(drange[0].year / 100) * 100
             hxr = open_dataset(
@@ -757,6 +764,7 @@ class CombineObject:
                 check_grid=False,
             )
         return hxr
+
 
 def combine_dataset(
     blist,
@@ -794,62 +802,61 @@ def combine_dataset(
     """
     # 2024 04 March. when the input datasets did not have identical time coordinates, the align method of
     #                xarray was not working properly. Changing the time coordinate to an integer first
-    #                fixes the problem. 
+    #                fixes the problem.
     #                Another issue is that the combination only worked when either the source or the ensemble dimension
     #                had length of 1. Did not work properly with multiple sources and multiple ensembles.
     #                to fix this changed how enslist and sourcelist were defined and utilized.
 
-
     # create list of datasets to be combined and their properties.
     # removes any cdumps that are empty.
-    xlist = []   # list of CombineObject objects
+    xlist = []  # list of CombineObject objects
     for bbb in blist:
-        cobject = CombineObject(bbb,drange,century,sample_time_stamp) 
+        cobject = CombineObject(bbb, drange, century, sample_time_stamp)
         if not cobject.empty:
-           xlist.append(cobject)
+            xlist.append(cobject)
         else:
-           logger.warning('could not open {}'.format(bbb[0]))
+            logger.warning("could not open {}".format(bbb[0]))
 
     # check that grids are equal by comparing each grid to the one before.
     for iii, xobj in enumerate(xlist[1:]):
-        if not xobj.grid_equal(xlist[iii]): 
-           logger.warning("WARNING: grids are not the same. cannot combine")
-           sys.exit()
+        if not xobj.grid_equal(xlist[iii]):
+            logger.warning("WARNING: grids are not the same. cannot combine")
+            sys.exit()
 
     xlist.sort()
-    # use earliest time               
+    # use earliest time
     svals = [x.start_time for x in xlist]
     svals.sort()
     stime = svals[0]
     # process the data-arrays to be combined.
     # change time coordinate to index, sum species.
-    [x.process(stime,dt=1,species=species) for x in xlist]
+    [x.process(stime, dt=1, species=species) for x in xlist]
 
     # align to get biggest grid
     xbig = xlist[0].xrash.copy()
     for xobj in xlist[1:]:
-        aaa, xbig = xr.align(xobj.xrash,xbig,join='outer')
-        
-    #First group and concatenate along ensemble dimension.
+        aaa, xbig = xr.align(xobj.xrash, xbig, join="outer")
+
+    # First group and concatenate along ensemble dimension.
     sourcelist = list(set([x.source for x in xlist]))
     outlist = []
     slist = []
     for source in sourcelist:
         # get all objects with that source
-        elist = [x for x in xlist if x.source==source]
+        elist = [x for x in xlist if x.source == source]
         inlist = []
         for eee in elist:
-            aaa, junk = xr.align(eee.xrash,xbig,join='outer')
+            aaa, junk = xr.align(eee.xrash, xbig, join="outer")
             aaa = aaa.fillna(0)
-            aaa.expand_dims('ens')
-            aaa['ens'] = eee.ens
+            aaa.expand_dims("ens")
+            aaa["ens"] = eee.ens
             inlist.append(aaa)
         # concat on ensemble dimension
-        inner = xr.concat(inlist,'ens')
+        inner = xr.concat(inlist, "ens")
         outlist.append(inner)
-    # concat on source dimension 
-    newhxr = xr.concat(outlist,'source')
-    newhxr['source'] = sourcelist
+    # concat on source dimension
+    newhxr = xr.concat(outlist, "source")
+    newhxr["source"] = sourcelist
 
     atthash = xlist[0].hxr.attrs
     attrs = check_attributes(atthash)
@@ -858,52 +865,59 @@ def combine_dataset(
     # change time coordinate back to datetime
     newhxr = index2time(newhxr)
     if check_grid:
-       rval = fix_grid_continuity(newhxr)
+        rval = fix_grid_continuity(newhxr)
     else:
-       rval = newhxr 
+        rval = newhxr
     return rval
 
-def get_time_index(timevals,stime,dt):
+
+def get_time_index(timevals, stime, dt):
     """
     timevals : list of datetimes
     stime    : start time of time grid
     dt       : integer - time resolution in hours of time grid.
     """
-    def apply(ttt):
-        diff = pd.to_datetime(ttt)-stime
-        dh = diff.days*24 + diff.seconds/3600
-        iii = dh/dt
-        return int(iii)
-    return [apply(x) for x in timevals]   
 
-def get_time_values(index_values,stime,dt):
+    def apply(ttt):
+        diff = pd.to_datetime(ttt) - stime
+        dh = diff.days * 24 + diff.seconds / 3600
+        iii = dh / dt
+        return int(iii)
+
+    return [apply(x) for x in timevals]
+
+
+def get_time_values(index_values, stime, dt):
     def apply(iii):
         ddd = stime + datetime.timedelta(hours=float(iii))
         return ddd
-    return [apply(x) for x in index_values]   
 
-def time2index(hxr,stime=None,dt=1):
+    return [apply(x) for x in index_values]
+
+
+def time2index(hxr, stime=None, dt=1):
     """
     hxr : xarray DataSet as output from open_dataset or combine_dataset
     make the time
 
     """
-    stime_str = 'coordinate start time'
-    dt_str = 'coordinate time dt (hours)'
+    stime_str = "coordinate start time"
+    dt_str = "coordinate time dt (hours)"
     tvals = hxr.time.values
     if stime is None:
-       stime = tvals[0]
-    ilist = get_time_index(tvals,stime,dt)
+        stime = tvals[0]
+    ilist = get_time_index(tvals, stime, dt)
     # create a time_index coordinate.
-    hxr = hxr.drop_vars('time')
-    hxr = hxr.assign_coords(time=('time',ilist))
-    hxr = hxr.assign_coords(time_values=('time',tvals))
+    hxr = hxr.drop_vars("time")
+    hxr = hxr.assign_coords(time=("time", ilist))
+    hxr = hxr.assign_coords(time_values=("time", tvals))
     atthash = {stime_str: stime}
     atthash[dt_str] = dt
     hxr.attrs.update(atthash)
-    #temp = temp.drop_vars('time')
-    #temp = temp.assign_coords(time=('t',tvals))
+    # temp = temp.drop_vars('time')
+    # temp = temp.assign_coords(time=('t',tvals))
     return hxr
+
 
 def index2time(hxr):
     """
@@ -912,24 +926,23 @@ def index2time(hxr):
           coordinate start time and coordinate time delta.
     Reverses changes made in time2index
     """
-    if 'time_values' in hxr.coords:
-       tvals = hxr.time_values.values
-       hxr = hxr.drop_vars('time')
-       hxr = hxr.drop_vars('time_values')
-       hxr = hxr.assign_coords(time=('time',tvals))
+    if "time_values" in hxr.coords:
+        tvals = hxr.time_values.values
+        hxr = hxr.drop_vars("time")
+        hxr = hxr.drop_vars("time_values")
+        hxr = hxr.assign_coords(time=("time", tvals))
     else:
-        stime_str = 'coordinate start time'
-        dt_str = 'coordinate time dt (hours)'
+        stime_str = "coordinate start time"
+        dt_str = "coordinate time dt (hours)"
         if stime_str in hxr.attrs.keys():
-           stime = pd.to_datetime(hxr.attrs[stime_str])
+            stime = pd.to_datetime(hxr.attrs[stime_str])
         if dt_str in hxr.attrs.keys():
-           dt = hxr.attrs[dt_str]
+            dt = hxr.attrs[dt_str]
         ilist = hxr.time.values
-        tvals = get_time_values(ilist,stime,dt) 
-        hxr = hxr.drop_vars('time')
-        hxr = hxr.assign_coords(time=('time',tvals))
-    return hxr 
-
+        tvals = get_time_values(ilist, stime, dt)
+        hxr = hxr.drop_vars("time")
+        hxr = hxr.assign_coords(time=("time", tvals))
+    return hxr
 
 
 def reset_latlon_coords(hxr):
@@ -1027,21 +1040,15 @@ def get_latlongrid(attrs, xindx, yindx):
     success = True
     try:
         lonlist = [lon[x - 1] for x in xindx]
-        # latlist = [lat[x - 1] for x in yindx]
     except Exception as eee:
         logger.warning(f"Exception {eee}")
         logger.warning("try increasing Number Number Lon Points")
-        #(attrs)
-        #print(xindx)
         success = False
     try:
-        # lonlist = [lon[x - 1] for x in xindx]
         latlist = [lat[x - 1] for x in yindx]
     except Exception as eee:
         logger.warning(f"Exception {eee}")
         logger.warning("try increasing Number Number Lat Points")
-        #print(attrs)
-        #print(yindx)
         success = False
 
     if not success:
