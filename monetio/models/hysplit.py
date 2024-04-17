@@ -816,7 +816,7 @@ def combine_dataset(
     # check that grids are equal by comparing each grid to the one before.
     for iii, xobj in enumerate(xlist[1:]):
         if not xobj.grid_equal(xlist[iii]):
-            logger.warning(f"WARNING: grids are not the same. cannot combine")
+            logger.warning("WARNING: grids are not the same. cannot combine")
             sys.exit()
 
     xlist.sort()
@@ -837,7 +837,6 @@ def combine_dataset(
     # sourcelist = list(set([x.source for x in xlist]))
     sourcelist = list({x.source for x in xlist})
     outlist = []
-    slist = []
     for source in sourcelist:
         # get all objects with that source
         elist = [x for x in xlist if x.source == source]
