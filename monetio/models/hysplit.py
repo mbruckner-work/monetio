@@ -207,7 +207,7 @@ class ModelBin:
 
         if readwrite == "r":
             if verbose:
-                logger.info("reading " + filename)
+                logger.info(f"reading {filename}")
             self.dataflag = self.readfile(filename, drange, verbose=verbose, century=century)
 
     @staticmethod
@@ -348,9 +348,7 @@ class ModelBin:
         """
         if len(hdata1["start_loc"]) != 1:
             logger.warning(
-                "WARNING in ModelBin {} _readfile - number of starting locations incorrect".format(
-                    self.filename
-                )
+                f"WARNING in ModelBin {self.filename} _readfile - number of starting locations incorrect"
             )
             logger.warning(str(hdata1["start_loc"]))
             return None
@@ -382,9 +380,7 @@ class ModelBin:
                     century = 2000
                 else:
                     century = 1900
-                logger.info(
-                    "WARNING: Guessing Century for HYSPLIT concentration file {}".format(century)
-                )
+                logger.info(f"WARNING: Guessing Century for HYSPLIT concentration file {century}")
             # add sourcedate which is datetime.datetime object
             sourcedate = datetime.datetime(
                 century + hdata2["r_year"][nnn],
@@ -646,7 +642,7 @@ class ModelBin:
             #  imax iterations.
             if iimax > imax:
                 testf = False
-                logger.warning("greater than imax {},{},{}".format(testf, iimax, imax))
+                logger.warning(f"greater than imax {testf},{iimax},{imax}")
             if inc_iii:
                 iii += 1
 
@@ -815,12 +811,12 @@ def combine_dataset(
         if not cobject.empty:
             xlist.append(cobject)
         else:
-            logger.warning("could not open {}".format(bbb[0]))
+            logger.warning(f"could not open {bbb[0]}")
 
     # check that grids are equal by comparing each grid to the one before.
     for iii, xobj in enumerate(xlist[1:]):
         if not xobj.grid_equal(xlist[iii]):
-            logger.warning("WARNING: grids are not the same. cannot combine")
+            logger.warning(f"WARNING: grids are not the same. cannot combine")
             sys.exit()
 
     xlist.sort()
