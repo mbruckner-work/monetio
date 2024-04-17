@@ -39,16 +39,16 @@ Change log
 2023 03 Mar  AMC  get_latlongrid improved exception statements
 2023 08 Dec  AMC  add check_attributes to ModelBin and combine_datatset to make sure level height attribute is a list
 2024 01 Apr  AMC  added logging. for combine_dataset add continue to exception so it won't fail.
-2024 04 Mar  AMC  bug fixes to combine_dataset 
+2024 04 Mar  AMC  bug fixes to combine_dataset
 
 """
 import datetime
+import logging
 import sys
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -834,7 +834,8 @@ def combine_dataset(
         aaa, xbig = xr.align(xobj.xrash, xbig, join="outer")
 
     # First group and concatenate along ensemble dimension.
-    sourcelist = list(set([x.source for x in xlist]))
+    # sourcelist = list(set([x.source for x in xlist]))
+    sourcelist = list({x.source for x in xlist})
     outlist = []
     slist = []
     for source in sourcelist:
