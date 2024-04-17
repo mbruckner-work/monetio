@@ -670,7 +670,7 @@ class CombineObject:
     """
 
 
-    def __init__(self,blist,drange=None,century=None,sample_time_stamp='start'):
+    def __init__(self,blist:tuple,drange=None,century=None,sample_time_stamp='start'):
         self.fname = blist[0]
         self.source = blist[1]
         self.ens = blist[2]
@@ -805,13 +805,11 @@ def combine_dataset(
     xlist = []   # list of CombineObject objects
     for bbb in blist:
         cobject = CombineObject(bbb,drange,century,sample_time_stamp) 
-        print('empty?', cobject.empty, cobject.hxr.coords) 
         if not cobject.empty:
            xlist.append(cobject)
         else:
            logger.warning('could not open {}'.format(bbb[0]))
 
-    print(xlist[1:]) 
     # check that grids are equal by comparing each grid to the one before.
     for iii, xobj in enumerate(xlist[1:]):
         if not xobj.grid_equal(xlist[iii]): 
@@ -822,7 +820,6 @@ def combine_dataset(
     # use earliest time               
     svals = [x.start_time for x in xlist]
     svals.sort()
-    print(svals)
     stime = svals[0]
     # process the data-arrays to be combined.
     # change time coordinate to index, sum species.
@@ -858,6 +855,7 @@ def combine_dataset(
     attrs = check_attributes(atthash)
     newhxr = newhxr.assign_attrs(attrs)
     newhxr = reset_latlon_coords(newhxr)
+    # change time coordinate back to datetime
     newhxr = index2time(newhxr)
     if check_grid:
        rval = fix_grid_continuity(newhxr)
