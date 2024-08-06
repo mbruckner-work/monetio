@@ -59,7 +59,6 @@ def open_mfdataset(
     # Process the loaded data
     # extract variables of choice
     # If vertical information is required, add it.
-    # Assume that height and geopotential height are equal
     if not surf_only:
         dset_load.rename(
             {
@@ -70,9 +69,9 @@ def open_mfdataset(
             }
         )
         # Calc height agl. PHIS is in m2/s2, whereas Z3 is in already in m
-        dset_load["alt_agl_m_mid"] = dset_load["alt_msl_m_mid"] - dset_load["PHIS"] / 9.81
+        dset_load["alt_agl_m_mid"] = dset_load["alt_msl_m_mid"] - dset_load["PHIS"] / 9.80665
         dset_load["alt_agl_m_mid"].attrs = {
-            "description": "geopot height above ground level",
+            "description": "geopotential height above ground level",
             "units": "m",
         }
         var_list = var_list + [
@@ -102,7 +101,7 @@ def open_mfdataset(
     # re-order so surface is associated with the first vertical index
     dset = dset.sortby("z", ascending=False)
 
-    # Get rid of variables lat and lon to avoid future conflicts
+    # Get rid of original 1-D lat and lon to avoid future conflicts
     dset = dset.drop_vars(["lat", "lon"])
 
     #############################
