@@ -101,7 +101,7 @@ def open_mfdataset(
     # re-order so surface is associated with the first vertical index
     dset = dset.sortby("z", ascending=False)
 
-    # Get rid of variables lat and lon to avoid future conflicts
+    # Get rid of original 1-D lat and lon to avoid future conflicts
     dset = dset.drop_vars(["lat", "lon"])
 
     #############################
