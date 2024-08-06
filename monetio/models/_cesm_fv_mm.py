@@ -92,8 +92,8 @@ def open_mfdataset(
     lon = wrap_longitudes(dset["lon"])
     lat = dset["lat"]
     lons, lats = meshgrid(lon, lat)
-    dset.coords["longitude"] = (("y", "x"), lons)
-    dset.coords["latitude"] = (("y", "x"), lats)
+    dset["longitude"] = (("y", "x"), lons)
+    dset["latitude"] = (("y", "x"), lats)
 
     # Set longitude and latitude to be only coordinates
     dset = dset.reset_coords()
