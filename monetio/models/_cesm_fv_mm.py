@@ -59,7 +59,6 @@ def open_mfdataset(
     # Process the loaded data
     # extract variables of choice
     # If vertical information is required, add it.
-    # Assume that height and geopotential height are equal
     if not surf_only:
         dset_load.rename(
             {
