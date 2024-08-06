@@ -69,7 +69,7 @@ def open_mfdataset(
             }
         )
         # Calc height agl. PHIS is in m2/s2, whereas Z3 is in already in m
-        dset_load["alt_agl_m_mid"] = dset_load["alt_msl_m_mid"] - dset_load["PHIS"] / 9.81
+        dset_load["alt_agl_m_mid"] = dset_load["alt_msl_m_mid"] - dset_load["PHIS"] / 9.80665
         dset_load["alt_agl_m_mid"].attrs = {
             "description": "geopotential height above ground level",
             "units": "m",
