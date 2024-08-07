@@ -60,14 +60,25 @@ def open_mfdataset(
     # extract variables of choice
     # If vertical information is required, add it.
     if not surf_only:
-        dset_load.rename(
-            {
-                "T": "temperature_k",
-                "Z3": "alt_msl_m_mid",
-                "P0": "surfpres_pa",
-                "PMID": "pres_pa_mid",
-            }
-        )
+        if "PMID" not in ds_load.keys():
+            presvars = ["P0", "PS", "hyam", "hybm"]
+            if not all(pvar in list(ds_load.keys()) for pvar in presvars):
+                raise KeyError(
+                    "The model does not have the variables to calculate"
+                    + "the pressure. This can be done either with PMID or with"
+                    + "P0, PS, hyam and hybm.\n"
+                    + "If the vertical coordinate is not needed, set surface_only=True"
+                )
+            else:
+                ds_load["PMID"] = _calc_pressure(ds_load)
+        # dset_load.rename(
+        #     {
+        #         "T": "temperature_k",
+        #         "Z3": "alt_msl_m_mid",
+        #         "P0": "surfpres_pa",
+        #         "PMID": "pres_pa_mid",
+        #     }
+        # )
         # Calc height agl. PHIS is in m2/s2, whereas Z3 is in already in m
         dset_load["alt_agl_m_mid"] = dset_load["alt_msl_m_mid"] - dset_load["PHIS"] / 9.80665
         dset_load["alt_agl_m_mid"].attrs = {
@@ -149,3 +160,36 @@ def _ensure_mfdataset_filenames(fname):
     if len(netcdfs) >= 1:
         netcdf = True
     return names, netcdf
+
+
+def _calc_pressure(ds):
+    """Calculates midlayer pressure using P0, PS, hyam, hybm
+    Parameters
+    ----------
+    dset: xr.Dataset
+    Returns
+    -------
+    xr.DataArray
+    """
+    vert = dset["hyam"].lev.values
+    time = dset["PS"].time.values
+    lat = dset["PS"].lat.values
+    lon = dset["PS"].lon.values
+    n_vert = len(vert)
+    n_time = len(time)
+    n_lat = len(lat)
+    n_lon = len(lon)
+
+    pressure = np.zeros((n_time, n_vert, n_lat, n_lon))
+
+    for nlev in range(n_vert):
+        pressure[:, nlev, :, :] = (
+            dset["hyam"][nlev].values * dset["P0"].values
+            + dset["hybm"][nlev].values * dset["PS"].values
+        )
+    P = xr.DataArray(
+        data=pressure,
+        dims=["time", "lev", "lat", "lon"],
+        coords={"time": time, "lev": lev, "lat": lat, "lon": lon},
+        attrs={"description": "Mid layer pressure", "units": "Pa"},
+    )
