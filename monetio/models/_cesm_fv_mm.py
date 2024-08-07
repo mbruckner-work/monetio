@@ -2,6 +2,7 @@
 
 import xarray as xr
 from numpy import meshgrid
+import warning
 
 
 def open_mfdataset(
@@ -60,25 +61,21 @@ def open_mfdataset(
     # extract variables of choice
     # If vertical information is required, add it.
     if not surf_only:
-        if "PMID" not in ds_load.keys():
-            presvars = ["P0", "PS", "hyam", "hybm"]
-            if not all(pvar in list(ds_load.keys()) for pvar in presvars):
-                raise KeyError(
-                    "The model does not have the variables to calculate"
-                    + "the pressure. This can be done either with PMID or with"
-                    + "P0, PS, hyam and hybm.\n"
-                    + "If the vertical coordinate is not needed, set surface_only=True"
-                )
-            else:
-                ds_load["PMID"] = _calc_pressure(ds_load)
-        # dset_load.rename(
-        #     {
-        #         "T": "temperature_k",
-        #         "Z3": "alt_msl_m_mid",
-        #         "P0": "surfpres_pa",
-        #         "PMID": "pres_pa_mid",
-        #     }
-        # )
+        if "PMID" not in dset_load.keys():
+            dset_load["PMID"] = _calc_pressure(dset_load)
+        variables = varaibles + ["PMID"]
+        if "Z3" not in dset_load.keys():
+            warnings.warn("Geopotential height Z3 is not in model keys. Assuming hydrostatic runs")
+            ds_load["Z3"] = _calc_hydrostatic_height(dset_load)
+
+        dset_load.rename(
+            {
+                "T": "temperature_k",
+                "Z3": "alt_msl_m_mid",
+                "PS": "surfpres_pa",
+                "PMID": "pres_pa_mid",
+            }
+        )
         # Calc height agl. PHIS is in m2/s2, whereas Z3 is in already in m
         dset_load["alt_agl_m_mid"] = dset_load["alt_msl_m_mid"] - dset_load["PHIS"] / 9.80665
         dset_load["alt_agl_m_mid"].attrs = {
@@ -162,7 +159,7 @@ def _ensure_mfdataset_filenames(fname):
     return names, netcdf
 
 
-def _calc_pressure(ds):
+def _calc_pressure(dset):
     """Calculates midlayer pressure using P0, PS, hyam, hybm
     Parameters
     ----------
@@ -171,8 +168,16 @@ def _calc_pressure(ds):
     -------
     xr.DataArray
     """
-    vert = dset["hyam"].lev.values
+    presvars = ["PS", "hyam", "hybm"]
+    if not all(pvar in list(ds_load.keys()) for pvar in presvars):
+        raise KeyError(
+            "The model does not have the variables to calculate"
+            + "the pressure. This can be done either with PMID or with"
+            + "P0, PS, hyam and hybm.\n"
+            + "If the vertical coordinate is not needed, set surface_only=True"
+        )
     time = dset["PS"].time.values
+    vert = dset["hyam"].lev.values
     lat = dset["PS"].lat.values
     lon = dset["PS"].lon.values
     n_vert = len(vert)
@@ -182,10 +187,15 @@ def _calc_pressure(ds):
 
     pressure = np.zeros((n_time, n_vert, n_lat, n_lon))
 
+    if "P0" not in dset.keys():
+        warning.warn("P0 not in netcdf keys, assuming 100_000 Pa")
+        p0 = 100_000
+    else:
+        p0 = dset["P0"].values
+
     for nlev in range(n_vert):
         pressure[:, nlev, :, :] = (
-            dset["hyam"][nlev].values * dset["P0"].values
-            + dset["hybm"][nlev].values * dset["PS"].values
+            dset["hyam"][nlev].values * p0 + dset["hybm"][nlev].values * dset["PS"].values
         )
     P = xr.DataArray(
         data=pressure,
@@ -193,3 +203,52 @@ def _calc_pressure(ds):
         coords={"time": time, "lev": lev, "lat": lat, "lon": lon},
         attrs={"description": "Mid layer pressure", "units": "Pa"},
     )
+    return P
+
+
+def _calc_hydrostatic_height(dsest):
+    """Calculates midlayer height using PMID, P, PS and PHIS, T,
+    Parameters
+    ----------
+    dset: xr.Dataset
+    Returns
+    -------
+    xr.DataArray
+    """
+    R = 8.314  # Pa * m3 / mol K
+    M_AIR = 0.028  # kg / mol
+    GRAVITY = 9.80665  # m / s2
+    time = dset["PMID"].time.values
+    vert = dset["PMID"].lev.values
+    lat = dset["PMID"].lat.values
+    lon = dset["PMID"].lon.values
+    n_vert = len(vert)
+    n_time = len(time)
+    n_lat = len(lat)
+    n_lon = len(lon)
+
+    # Check if the vertical levels go from highest to lowest altitude,
+    # which is the default in CESM. That means, that the hybrid
+    # pressure levels should be increasing.
+    _height_decreasing = np.all(vert[:-1] < vert[1:])
+    if not _height_decreasing:
+        raise Exception(
+            "Expected default CESM behaviour:" + "pressure levels should be in decreasing order"
+        )
+
+    height = np.zeros((n_time, n_vert, n_lat, n_lon))
+    height[:, nlev, :, :] = dset["PHIS"].values / GRAVITY
+    for nlev in range(n_vert - 1, -1, -1):
+        height_b = height[:, nlev + 1, :, :]
+        temp_b = dset["T"].isel(lev=nlev + 1).values
+        pres_b = dset["PMID"].isel(lev=nlev + 1)
+        pres = dset["PMID"].isel(lev=nlev)
+        height[:, nlev, :, :] = height_b - R * temp_b * ln(pres / pres_b) / (GRAVITY * M_AIR)
+
+    z = xr.DataArray(
+        data=height,
+        dims=["time", "lev", "lat", "lon"],
+        coords={"time": time, "lev": lev, "lat": lat, "lon": lon},
+        attrs={"description": "Mid layer (hydrostatic) height", "units": "m"},
+    )
+    return z
