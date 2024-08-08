@@ -2,7 +2,7 @@
 
 import xarray as xr
 from numpy import meshgrid
-import warning
+import warnings
 
 
 def open_mfdataset(
