@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from filelock import FileLock
 
-from monetio.sat._tropomi_l2_no2_mm import open_dataset
+from monetio.models._cesm_fv_mm import open_mfdataset
 
 HERE = Path(__file__).parent
 
