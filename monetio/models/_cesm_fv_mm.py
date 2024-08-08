@@ -188,7 +188,7 @@ def _calc_pressure(dset):
     pressure = np.zeros((n_time, n_vert, n_lat, n_lon))
 
     if "P0" not in dset.keys():
-        warning.warn("P0 not in netcdf keys, assuming 100_000 Pa")
+        warnings.warn("P0 not in netcdf keys, assuming 100_000 Pa")
         p0 = 100_000
     else:
         p0 = dset["P0"].values
