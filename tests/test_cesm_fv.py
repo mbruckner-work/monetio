@@ -68,4 +68,5 @@ def _test_ds(ds):
 
 
 def test_open_mfdataset(test_file_path):
-    ds = _cesm_fv.open_dataset(TEST_FP)
+    ds = open_mfdataset(test_file_path)
+    _test_ds(ds)
