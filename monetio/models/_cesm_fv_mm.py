@@ -243,9 +243,9 @@ def _calc_hydrostatic_height(dset):
     for nlev in range(n_vert - 1, -1, -1):
         height_b = height[:, nlev + 1, :, :]
         temp_b = dset["T"].isel(lev=nlev + 1).values
-        pres_b = dset["PMID"].isel(lev=nlev + 1)
-        pres = dset["PMID"].isel(lev=nlev)
-        height[:, nlev, :, :] = height_b - R * temp_b * np.ln(pres / pres_b) / (GRAVITY * M_AIR)
+        press_b = dset["PMID"].isel(lev=nlev + 1)
+        press = dset["PMID"].isel(lev=nlev)
+        height[:, nlev, :, :] = height_b - R * temp_b * np.ln(press / press_b) / (GRAVITY * M_AIR)
 
     z = xr.DataArray(
         data=height,
