@@ -2,7 +2,6 @@ import shutil
 import warnings
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
 import pytest
 from filelock import FileLock
@@ -62,10 +61,10 @@ def _test_ds(ds):
     assert "lon" not in ds.data_vars
     assert "latitude" in ds.coords
     assert "longitude" in ds.coords
-    assert np.all(ds.latitude.values[0, :] == ds.latitude.values[0,0])
-    assert np.all(ds.longitude.values[:, 0] == ds.longitude.values[0,0])
-    assert tuple(ds["O3"].dims) == ('time', 'z', 'y', 'x')
-    assert ds['O3'].attrs['units'] == 'ppbv'
+    assert np.all(ds.latitude.values[0, :] == ds.latitude.values[0, 0])
+    assert np.all(ds.longitude.values[:, 0] == ds.longitude.values[0, 0])
+    assert tuple(ds["O3"].dims) == ("time", "z", "y", "x")
+    assert ds["O3"].attrs["units"] == "ppbv"
 
 
 def test_open_mfdataset(test_file_path):
