@@ -1,8 +1,10 @@
 """CESM File Reader"""
 
+import warnings
+
+import numpy as np
 import xarray as xr
 from numpy import meshgrid
-import warnings
 
 
 def open_mfdataset(
@@ -63,10 +65,10 @@ def open_mfdataset(
     if not surf_only:
         if "PMID" not in dset_load.keys():
             dset_load["PMID"] = _calc_pressure(dset_load)
-        variables = varaibles + ["PMID"]
+        var_list = var_list + ["PMID"]
         if "Z3" not in dset_load.keys():
             warnings.warn("Geopotential height Z3 is not in model keys. Assuming hydrostatic runs")
-            ds_load["Z3"] = _calc_hydrostatic_height(dset_load)
+            dset_load["Z3"] = _calc_hydrostatic_height(dset_load)
 
         dset_load.rename(
             {
@@ -169,7 +171,7 @@ def _calc_pressure(dset):
     xr.DataArray
     """
     presvars = ["PS", "hyam", "hybm"]
-    if not all(pvar in list(ds_load.keys()) for pvar in presvars):
+    if not all(pvar in list(dset.keys()) for pvar in presvars):
         raise KeyError(
             "The model does not have the variables to calculate"
             + "the pressure. This can be done either with PMID or with"
@@ -200,13 +202,13 @@ def _calc_pressure(dset):
     P = xr.DataArray(
         data=pressure,
         dims=["time", "lev", "lat", "lon"],
-        coords={"time": time, "lev": lev, "lat": lat, "lon": lon},
+        coords={"time": time, "lev": vert, "lat": lat, "lon": lon},
         attrs={"description": "Mid layer pressure", "units": "Pa"},
     )
     return P
 
 
-def _calc_hydrostatic_height(dsest):
+def _calc_hydrostatic_height(dset):
     """Calculates midlayer height using PMID, P, PS and PHIS, T,
     Parameters
     ----------
@@ -237,18 +239,18 @@ def _calc_hydrostatic_height(dsest):
         )
 
     height = np.zeros((n_time, n_vert, n_lat, n_lon))
-    height[:, nlev, :, :] = dset["PHIS"].values / GRAVITY
+    height[:, n_vert, :, :] = dset["PHIS"].values / GRAVITY
     for nlev in range(n_vert - 1, -1, -1):
         height_b = height[:, nlev + 1, :, :]
         temp_b = dset["T"].isel(lev=nlev + 1).values
         pres_b = dset["PMID"].isel(lev=nlev + 1)
         pres = dset["PMID"].isel(lev=nlev)
-        height[:, nlev, :, :] = height_b - R * temp_b * ln(pres / pres_b) / (GRAVITY * M_AIR)
+        height[:, nlev, :, :] = height_b - R * temp_b * np.ln(pres / pres_b) / (GRAVITY * M_AIR)
 
     z = xr.DataArray(
         data=height,
         dims=["time", "lev", "lat", "lon"],
-        coords={"time": time, "lev": lev, "lat": lat, "lon": lon},
+        coords={"time": time, "lev": vert, "lat": lat, "lon": lon},
         attrs={"description": "Mid layer (hydrostatic) height", "units": "m"},
     )
     return z
