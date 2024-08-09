@@ -29,7 +29,7 @@ def retrieve_test_file():
         with open(p, "wb") as f:
             f.write(r.content)
 
-    return str(p)
+    return p
 
 
 @pytest.fixture(scope="module")
@@ -68,5 +68,6 @@ def _test_ds(ds):
 
 
 def test_open_mfdataset(test_file_path):
-    ds = open_mfdataset(test_file_path)
+    file_path = str(test_file_path)
+    ds = open_mfdataset(file_path)
     _test_ds(ds)
