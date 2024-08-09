@@ -3,6 +3,7 @@ import warnings
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 import pytest
 from filelock import FileLock
 
@@ -29,7 +30,7 @@ def retrieve_test_file():
         with open(p, "wb") as f:
             f.write(r.content)
 
-    return p
+    return str(p)
 
 
 @pytest.fixture(scope="module")
