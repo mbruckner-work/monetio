@@ -84,7 +84,7 @@ def _open_one_dataset(fname, variable_dict):
             )
 
             # Mid-layer pressure
-            assert a.sizes["v"] == 2
+            assert a.sizes["v"] == 2, "base and top"
             p = ((a.isel(v=0) + b.isel(v=0) * psfc) + (a.isel(v=1) + b.isel(v=1) * psfc)) / 2
             ds["preslev"] = p
             ds["preslev"].attrs.update({"long_name": "mid-layer pressure", "units": "Pa"})
