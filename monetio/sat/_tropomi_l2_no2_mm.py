@@ -56,12 +56,51 @@ def _open_one_dataset(fname, variable_dict):
     ds = ds.set_coords(["lon", "lat", "time", "scan_time"])
     ds.attrs["reference_time_string"] = ref_time_val.astype(datetime).strftime(r"%Y%m%d")
 
-    for varname in variable_dict:
+    def get_extra(varname_, *, dct_=None, default_group="PRODUCT"):
+        """Get non-varname variables."""
+        if dct_ is None:
+            dct_ = variable_dict.get(varname_, {})
+        group_name = dct_.get("group", default_group)
+        return _get_values(dso[group_name][varname_], dct_)
+
+    for varname, dct in variable_dict.items():
         print(varname)
 
-        if varname in {"latitude_bounds", "longitude_bounds"}:
-            group_name = variable_dict.get("group", "PRODUCT/SUPPORT_DATA/GEOLOCATIONS")
-            values = dso[group_name][varname][:].squeeze()
+        if varname == "preslev":
+            # Compute layered pressure and tropopause pressure
+
+            itrop_ = get_extra("tm5_tropopause_layer_index", dct_=dct)
+            itrop_[itrop_ == 0] = 1  # Avoid trop in surface layer
+            itrop = xr.DataArray(itrop_, dims=("y", "x"))
+            a = xr.DataArray(data=get_extra("tm5_constant_a", dct_=dct), dims=("z", "v"))
+            b = xr.DataArray(data=get_extra("tm5_constant_b", dct_=dct), dims=("z", "v"))
+            psfc = xr.DataArray(
+                data=get_extra(
+                    "surface_pressure",
+                    default_group="PRODUCT/SUPPORT_DATA/INPUT_DATA",
+                    dct_=dct,
+                ),
+                dims=("y", "x"),
+            )
+
+            # Mid-layer pressure
+            assert a.sizes["v"] == 2
+            p = ((a.isel(v=0) + b.isel(v=0) * psfc) + (a.isel(v=1) + b.isel(v=1) * psfc)) / 2
+            ds["preslev"] = p
+            ds["preslev"].attrs.update({"long_name": "mid-layer pressure", "units": "Pa"})
+
+            # Tropopause pressure
+            ptrop = xr.full_like(itrop, np.nan, dtype=ds["preslev"].dtype)
+            for i in np.unique(itrop):
+                if np.isnan(i):
+                    continue
+                ptrop = xr.where(itrop == i, p.isel(z=int(i)), ptrop)
+            ds["troppres"] = ptrop
+            ds["troppres"].attrs.update({"long_name": "tropopause pressure", "units": "Pa"})
+
+        elif varname in {"latitude_bounds", "longitude_bounds"}:
+            group_name = dct.get("group", "PRODUCT/SUPPORT_DATA/GEOLOCATIONS")
+            values = _get_values(dso[group_name][varname], dct)
             assert values.shape[-1] == 4
             for i in range(4):
                 ds[f"{varname}_{i}"] = (
@@ -71,41 +110,51 @@ def _open_one_dataset(fname, variable_dict):
                 )
 
         else:
-            values_var = dso.groups["PRODUCT"][varname]
-            values = values_var[:].squeeze()
-
-            fv = values_var.getncattr("_FillValue")
-            if fv is not None:
-                values[:][values[:] == fv] = np.nan
-
-            if "fillvalue" in variable_dict[varname]:
-                fillvalue = variable_dict[varname]["fillvalue"]
-                values[:][values[:] == fillvalue] = np.nan
-
-            if "scale" in variable_dict[varname]:
-                values[:] = variable_dict[varname]["scale"] * values[:]
-
-            if "minimum" in variable_dict[varname]:
-                minimum = variable_dict[varname]["minimum"]
-                values[:][values[:] < minimum] = np.nan
-
-            if "maximum" in variable_dict[varname]:
-                maximum = variable_dict[varname]["maximum"]
-                values[:][values[:] > maximum] = np.nan
+            group_name = dct.get("group", "PRODUCT")
+            var = dso[group_name][varname]
+            values = _get_values(var, dct)
 
             ds[varname] = (
                 ("y", "x"),
                 values,
-                {"long_name": values_var.long_name, "units": values_var.units},
+                {"long_name": var.long_name, "units": var.units},
             )
 
-            if "quality_flag_min" in variable_dict[varname]:
+            if "quality_flag_min" in dct:
                 ds.attrs["quality_flag"] = varname
-                ds.attrs["quality_thresh_min"] = variable_dict[varname]["quality_flag_min"]
+                ds.attrs["quality_thresh_min"] = dct["quality_flag_min"]
 
     dso.close()
 
     return ds
+
+
+def _get_values(var, dct):
+    """Take netCDF4 Variable, squeeze, tweak values based on nc fill value attribute
+    and user-provided attribute dict, return NumPy array."""
+
+    values = var[:].squeeze()
+
+    fv = var.getncattr("_FillValue")
+    if fv is not None and not np.ma.is_masked(values):
+        values[values == fv] = np.nan
+
+    if "fillvalue" in dct:
+        fillvalue = dct["fillvalue"]
+        values[values == fillvalue] = np.nan
+
+    if "scale" in dct:
+        values *= dct["scale"]
+
+    if "minimum" in dct:
+        minimum = dct["minimum"]
+        values[values < minimum] = np.nan
+
+    if "maximum" in dct:
+        maximum = dct["maximum"]
+        values[values > maximum] = np.nan
+
+    return values
 
 
 def apply_quality_flag(ds):
@@ -139,9 +188,14 @@ def open_dataset(fnames, variable_dict, debug=False):
         that, if provided, will be used when processing the data
         (``fillvalue``, ``scale``, ``maximum``, ``minimum``, ``quality_flag_min``).
         A variable's attribute dict is allowed to be empty (``{}``).
-        If ``longitude_bounds`` or ``latitude_bounds`` are in the dict,
-        a non-default group name can be specified with the key ``group``, and
+        For ``longitude_bounds`` and ``latitude_bounds``,
         variables ``longitude_bounds_{1..4}`` and/or ``latitude_bounds_{1..4}`` are created.
+        For ``preslev``, you can specify attributes for the variables used to calculate pressure
+        (``tm5_tropopause_layer_index``, ``tm5_constant_a``, ``tm5_constant_b``, ``surface_pressure``),
+        and variables ``preslev`` (mid-layer pressure)
+        and ``troppres`` (tropopause pressure) are created.
+        For any variable,
+        a non-default group name can be specified with the key ``group``.
         Or, instead, you can pass a single variable name as a string
         or a sequence of variable names.
     debug : bool
