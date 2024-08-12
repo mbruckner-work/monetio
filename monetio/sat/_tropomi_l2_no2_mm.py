@@ -58,37 +58,50 @@ def _open_one_dataset(fname, variable_dict):
 
     for varname in variable_dict:
         print(varname)
-        values_var = dso.groups["PRODUCT"][varname]
-        values = values_var[:].squeeze()
 
-        fv = values_var.getncattr("_FillValue")
-        if fv is not None:
-            values[:][values[:] == fv] = np.nan
+        if varname in {"latitude_bounds", "longitude_bounds"}:
+            group_name = variable_dict.get("group", "PRODUCT/SUPPORT_DATA/GEOLOCATIONS")
+            values = dso[group_name][varname][:].squeeze()
+            assert values.shape[-1] == 4
+            for i in range(4):
+                ds[f"{varname}_{i}"] = (
+                    ("y", "x"),
+                    values[:, :, i],
+                    {"long_name": f"{varname} {i}"},
+                )
 
-        if "fillvalue" in variable_dict[varname]:
-            fillvalue = variable_dict[varname]["fillvalue"]
-            values[:][values[:] == fillvalue] = np.nan
+        else:
+            values_var = dso.groups["PRODUCT"][varname]
+            values = values_var[:].squeeze()
 
-        if "scale" in variable_dict[varname]:
-            values[:] = variable_dict[varname]["scale"] * values[:]
+            fv = values_var.getncattr("_FillValue")
+            if fv is not None:
+                values[:][values[:] == fv] = np.nan
 
-        if "minimum" in variable_dict[varname]:
-            minimum = variable_dict[varname]["minimum"]
-            values[:][values[:] < minimum] = np.nan
+            if "fillvalue" in variable_dict[varname]:
+                fillvalue = variable_dict[varname]["fillvalue"]
+                values[:][values[:] == fillvalue] = np.nan
 
-        if "maximum" in variable_dict[varname]:
-            maximum = variable_dict[varname]["maximum"]
-            values[:][values[:] > maximum] = np.nan
+            if "scale" in variable_dict[varname]:
+                values[:] = variable_dict[varname]["scale"] * values[:]
 
-        ds[varname] = (
-            ("y", "x"),
-            values,
-            {"long_name": values_var.long_name, "units": values_var.units},
-        )
+            if "minimum" in variable_dict[varname]:
+                minimum = variable_dict[varname]["minimum"]
+                values[:][values[:] < minimum] = np.nan
 
-        if "quality_flag_min" in variable_dict[varname]:
-            ds.attrs["quality_flag"] = varname
-            ds.attrs["quality_thresh_min"] = variable_dict[varname]["quality_flag_min"]
+            if "maximum" in variable_dict[varname]:
+                maximum = variable_dict[varname]["maximum"]
+                values[:][values[:] > maximum] = np.nan
+
+            ds[varname] = (
+                ("y", "x"),
+                values,
+                {"long_name": values_var.long_name, "units": values_var.units},
+            )
+
+            if "quality_flag_min" in variable_dict[varname]:
+                ds.attrs["quality_flag"] = varname
+                ds.attrs["quality_thresh_min"] = variable_dict[varname]["quality_flag_min"]
 
     dso.close()
 
@@ -126,6 +139,9 @@ def open_dataset(fnames, variable_dict, debug=False):
         that, if provided, will be used when processing the data
         (``fillvalue``, ``scale``, ``maximum``, ``minimum``, ``quality_flag_min``).
         A variable's attribute dict is allowed to be empty (``{}``).
+        If ``longitude_bounds`` or ``latitude_bounds`` are in the dict,
+        a non-default group name can be specified with the key ``group``, and
+        variables ``longitude_bounds_{1..4}`` and/or ``latitude_bounds_{1..4}`` are created.
         Or, instead, you can pass a single variable name as a string
         or a sequence of variable names.
     debug : bool

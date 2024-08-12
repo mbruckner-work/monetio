@@ -70,5 +70,22 @@ def test_open_dataset(test_file_path):
     assert pd.Timestamp(ds.time.values) == t_ref
     assert (ds.scan_time.dt.floor("D") == t_ref).all()
 
-    ds2 = open_dataset(test_file_path, {vn: {"minimum": 1e-9}})[t_ref.strftime(r"%Y%m%d")]
+    ds2 = open_dataset(
+        test_file_path,
+        {
+            vn: {"minimum": 1e-9},
+            "latitude_bounds": {},
+            "longitude_bounds": {},
+        },
+    )[t_ref.strftime(r"%Y%m%d")]
+
+    assert not ds2[vn].isnull().all()
     assert ds2[vn].min() >= 1e-9
+
+    for i in range(4):
+        assert not ds2[f"latitude_bounds_{i}"].isnull().any()
+        assert ds2[f"latitude_bounds_{i}"].min() >= -90
+        assert ds2[f"latitude_bounds_{i}"].max() <= 90
+        assert not ds2[f"longitude_bounds_{i}"].isnull().any()
+        assert ds2[f"longitude_bounds_{i}"].min() >= -180
+        assert ds2[f"longitude_bounds_{i}"].max() <= 180
