@@ -195,7 +195,7 @@ def open_dataset(fnames, variable_dict, debug=False):
         and variables ``preslev`` (mid-layer pressure)
         and ``troppres`` (tropopause pressure) are created.
         For any variable,
-        a non-default group name can be specified with the key ``group``.
+        a non-default group name can be specified with the key ``group`` (use ``/`` for nesting).
         Or, instead, you can pass a single variable name as a string
         or a sequence of variable names.
     debug : bool
