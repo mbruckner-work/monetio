@@ -170,7 +170,6 @@ def apply_quality_flag(ds):
 
         # Apply the quality thresh minimum to all variables in ds
         for varname in ds:
-            print(varname)
             if varname != ds.attrs["quality_flag"]:
                 logging.debug(varname)
                 values = ds[varname].values
