@@ -57,8 +57,8 @@ def _test_ds(ds):
     assert set(ds.dims) == {"time", "x", "y", "z"}
 
     # Test coordinates
-    assert "lat" not in ds.data_vars
-    assert "lon" not in ds.data_vars
+    assert "lat" not in ds.variables
+    assert "lon" not in ds.variables
     assert "latitude" in ds.coords
     assert "longitude" in ds.coords
     assert np.all(ds.latitude.values[0, :] == ds.latitude.values[0, 0])
