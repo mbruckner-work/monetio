@@ -354,14 +354,27 @@ def add_data(
                         "date_to": t_to,
                     }
 
-    data = []
-    for params in iter_queries():
-        data_ = _consume(
-            _ENDPOINTS["measurements"],
-            params=params,
-            **kwargs,
-        )
-        data.extend(data_)
+    threads = kwargs.pop("threads", None)
+    if threads is not None:
+        import concurrent.futures
+        from itertools import chain
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+            data = chain.from_iterable(
+                executor.map(
+                    lambda params: _consume(_ENDPOINTS["measurements"], params=params, **kwargs),
+                    iter_queries(),
+                )
+            )
+    else:
+        data = []
+        for params in iter_queries():
+            this_data = _consume(
+                _ENDPOINTS["measurements"],
+                params=params,
+                **kwargs,
+            )
+            data.extend(this_data)
 
     df = pd.DataFrame(data)
     if df.empty:

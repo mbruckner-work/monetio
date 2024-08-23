@@ -57,7 +57,7 @@ def test_get_data_near_ncwcp_sites():
 def test_get_data_near_ncwcp_search_radius():
     latlon = LATLON_NCWCP
     dates = pd.date_range("2023-08-01", "2023-08-01 01:00", freq="1H")
-    df = openaq.add_data(dates, search_radius={latlon: 10_000})
+    df = openaq.add_data(dates, search_radius={latlon: 10_000}, threads=2)
     assert len(df) > 0
     assert "pm25" in df.parameter.values
     assert df.latitude.round().eq(39).all()
