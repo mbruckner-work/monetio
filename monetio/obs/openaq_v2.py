@@ -57,6 +57,7 @@ def _consume(url, *, params=None, timeout=10, retry=5, limit=500, npages=None):
     headers = {
         "Accept": "application/json",
         "X-API-Key": API_KEY,
+        "User-Agent": "monetio",
     }
 
     data = []
@@ -70,6 +71,10 @@ def _consume(url, *, params=None, timeout=10, retry=5, limit=500, npages=None):
                 tries += 1
                 logger.info(f"request timed out (try {tries}/{retry})")
                 time.sleep(tries)
+            if r.status_code == 429:
+                tries += 1
+                logger.info(f"rate limited (try {tries}/{retry})")
+                time.sleep(tries * 1.5)
             else:
                 break
         r.raise_for_status()
@@ -202,6 +207,8 @@ def add_data(
     country=None,
     search_radius=None,
     sites=None,
+    entity=None,
+    sensor_type=None,
     query_time_split="1H",
     wide_fmt=False,  # FIXME: probably want to default to True
     **kwargs,
@@ -224,6 +231,12 @@ def add_data(
         Site ID(s) to include, e.g. a specific known site
         or group of sites from :func:`get_latlonbox_sites`.
         Default: full dataset (no limitation by site).
+    entity : str or list of str, optional
+        Options: ``'government'``, ``'research'``, ``'community'``.
+        Default: full dataset (no limitation by entity).
+    sensor_type : str or list of str, optional
+        Options: ``'low-cost sensor'``, ``'reference grade'``.
+        Default: full dataset (no limitation by sensor type).
     query_time_split
         Frequency to use when splitting the web API queries in time,
         in a format that ``pandas.to_timedelta`` will understand.
@@ -272,6 +285,10 @@ def add_data(
         params.update(country=country)
     if sites is not None:
         params.update(location_id=sites)
+    if entity is not None:
+        params.update(entity=entity)
+    if sensor_type is not None:
+        params.update(sensor_type=sensor_type)
 
     data = []
     for parameter in parameters:
@@ -284,7 +301,9 @@ def add_data(
             if search_radius is not None:
                 for coords, radius in search_radius.items():
                     if not 0 < radius <= 25_000:
-                        raise ValueError(f"invalid radius {radius!r}")
+                        raise ValueError(
+                            f"invalid radius {radius!r}. Must be positive and <= 25000 (25 km)."
+                        )
                     params.update(
                         coordinates=f"{coords[0]:.8f},{coords[1]:.8f}",
                         radius=radius,

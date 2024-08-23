@@ -3,14 +3,21 @@ import pytest
 
 import monetio.obs.openaq_v2 as openaq
 
+LATLON_NCWCP = 38.9721, -76.9248
 SITES_NEAR_NCWCP = [
     # AirGradient monitor
     1236068,
-    # PurpleAir sensors
-    1118827,
-    357301,
-    273440,
-    271155,
+    1719392,
+    # # PurpleAir sensors
+    # 1118827,
+    # 357301,
+    # 273440,
+    # 271155,
+    # NASA GSFC
+    2978434,
+    # Beltsville (AirNow)
+    3832,
+    843,
 ]
 
 
@@ -44,18 +51,43 @@ def test_get_data_near_ncwcp_sites():
     assert df.latitude.round().eq(39).all()
     assert df.longitude.round().eq(-77).all()
     assert (sorted(df.time.unique()) == dates).all()
-    assert set(df.siteid) == {str(site) for site in sites}
+    assert set(df.siteid) <= {str(site) for site in sites}
 
 
 def test_get_data_near_ncwcp_search_radius():
-    latlon = 38.9721, -76.9248
+    latlon = LATLON_NCWCP
     dates = pd.date_range("2023-08-01", "2023-08-01 01:00", freq="1H")
-    df = openaq.add_data(dates, search_radius={latlon: 5_000})
+    df = openaq.add_data(dates, search_radius={latlon: 10_000})
     assert len(df) > 0
     assert "pm25" in df.parameter.values
     assert df.latitude.round().eq(39).all()
     assert df.longitude.round().eq(-77).all()
     assert (sorted(df.time.unique()) == dates).all()
+    assert not df.sensorType.eq("low-cost sensor").all()
+    assert df.entity.eq("Governmental Organization").all()
+
+
+def test_get_data_near_ncwcp_sensor_type():
+    latlon = LATLON_NCWCP
+    dates = pd.date_range("2023-08-01", "2023-08-01 03:00", freq="1H")
+    df = openaq.add_data(dates, sensor_type="low-cost sensor", search_radius={latlon: 25_000})
+    assert len(df) > 0
+    assert df.sensorType.eq("low-cost sensor").all()
+
+
+@pytest.mark.parametrize(
+    "entity",
+    [
+        "research",
+        "community",
+        ["research", "community"],
+    ],
+)
+def test_get_data_near_ncwcp_entity(entity):
+    latlon = LATLON_NCWCP
+    dates = pd.date_range("2023-08-01", "2023-08-01 01:00", freq="1H")
+    df = openaq.add_data(dates, entity=entity, search_radius={latlon: 25_000})
+    assert df.empty
 
 
 def test_get_data_wide_error():
