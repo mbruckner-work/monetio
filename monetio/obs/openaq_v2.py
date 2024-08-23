@@ -102,8 +102,9 @@ def _consume(endpoint, *, params=None, timeout=10, retry=5, limit=500, npages=No
                 logger.info(f"request timed out (try {tries}/{retry})")
                 time.sleep(tries + 0.1 * rand())
             elif r.status_code == 429:
+                # Note: reponse headers don't seem to include Retry-After
                 logger.info(f"rate limited (try {tries}/{retry})")
-                time.sleep(tries * 2 + 0.2 * rand())
+                time.sleep(tries * 5 + 0.2 * rand())
             else:
                 break
         r.raise_for_status()
