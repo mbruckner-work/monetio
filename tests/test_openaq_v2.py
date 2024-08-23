@@ -93,3 +93,16 @@ def test_get_data_near_ncwcp_entity(entity):
 def test_get_data_wide_error():
     with pytest.raises(NotImplementedError, match="wide format not implemented"):
         openaq.add_data(["2023-08-01", "2023-08-02"], wide_fmt=True)
+
+
+@pytest.mark.parametrize(
+    "radius",
+    [
+        0,
+        -1,
+        25001,
+    ],
+)
+def test_get_data_bad_radius(radius):
+    with pytest.raises(ValueError, match="invalid radius"):
+        openaq.add_data(["2023-08-01", "2023-08-02"], search_radius={LATLON_NCWCP: radius})

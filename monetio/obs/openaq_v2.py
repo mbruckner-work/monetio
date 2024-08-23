@@ -257,7 +257,9 @@ def add_data(
         For example, ``'US'`` or ``['US', 'CA']`` (two-letter country codes).
         Default: full dataset (no limitation by country).
     search_radius : dict, optional
-        Mapping coords (lat, lon) [deg] to search radius [m] (max of 25 km).
+        Mapping of coords tuple (lat, lon) [deg] to search radius [m] (max of 25 km).
+        For example: ``search_radius={(39.0, -77.0): 10_000}``.
+        Note that this dict can contain multiple entries.
     sites : list of str, optional
         Site ID(s) to include, e.g. a specific known site
         or group of sites from :func:`get_latlonbox_sites`.
@@ -295,6 +297,13 @@ def add_data(
     if date_min == date_max or len(dates) == 0:
         raise ValueError("must provide at least two unique datetimes")
 
+    for coords, radius in search_radius.items():
+        if not 0 < radius <= 25_000:
+            raise ValueError(
+                f"invalid radius {radius!r} for location {coords!r}. "
+                "Must be positive and <= 25000 (25 km)."
+            )
+
     if wide_fmt is True:
         raise NotImplementedError("wide format not implemented yet")
 
@@ -331,10 +340,6 @@ def add_data(
             )
             if search_radius is not None:
                 for coords, radius in search_radius.items():
-                    if not 0 < radius <= 25_000:
-                        raise ValueError(
-                            f"invalid radius {radius!r}. Must be positive and <= 25000 (25 km)."
-                        )
                     params.update(
                         coordinates=f"{coords[0]:.8f},{coords[1]:.8f}",
                         radius=radius,
