@@ -3,9 +3,11 @@
 https://openaq.org/
 https://api.openaq.org/docs#/v2
 """
+import functools
 import json
 import logging
 import os
+import warnings
 
 import pandas as pd
 import requests
@@ -13,11 +15,22 @@ import requests
 logger = logging.getLogger(__name__)
 
 API_KEY = os.environ.get("OPENAQ_API_KEY", None)
-if API_KEY is None:
-    print(
-        "warning: non-cached requests to the OpenAQ v2 web API will be slow without an API key. "
-        "Obtain one and set your OPENAQ_API_KEY environment variable."
-    )
+
+
+def _api_key_warning(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if API_KEY is None:
+            warnings.warn(
+                "Non-cached requests to the OpenAQ v2 web API will be slow without an API key. "
+                "Obtain one (https://docs.openaq.org/docs/getting-started#api-key) "
+                "and set your OPENAQ_API_KEY environment variable.",
+                stacklevel=2,
+            )
+        return func(*args, **kwargs)
+
+    return wrapper
+
 
 _BASE_URL = "https://api.openaq.org"
 _ENDPOINTS = {
@@ -113,6 +126,7 @@ def _consume(endpoint, *, params=None, timeout=10, retry=5, limit=500, npages=No
     return data
 
 
+@_api_key_warning
 def get_locations(**kwargs):
     """Get available site info (including site IDs) from OpenAQ v2 API.
 
@@ -216,6 +230,7 @@ def get_latlonbox_sites(latlonbox, **kwargs):
     return sites[in_box].reset_index(drop=True)
 
 
+@_api_key_warning
 def add_data(
     dates,
     *,
