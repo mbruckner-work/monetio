@@ -75,6 +75,13 @@ def test_get_data_near_ncwcp_sensor_type():
     assert df.sensorType.eq("low-cost sensor").all()
 
 
+def test_get_data_single_dt_single_site():
+    site = 843
+    dates = "2023-08-01"
+    df = openaq.add_data(dates, parameters="o3", sites=site)
+    assert len(df) == 1
+
+
 @pytest.mark.parametrize(
     "entity",
     [

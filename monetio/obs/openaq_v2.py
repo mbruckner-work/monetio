@@ -97,14 +97,13 @@ def _consume(endpoint, *, params=None, timeout=10, retry=5, limit=500, npages=No
         while tries < retry:
             logger.debug(f"GET {url} params={params}")
             r = requests.get(url, params=params, headers=headers, timeout=timeout)
+            tries += 1
             if r.status_code == 408:
-                tries += 1
                 logger.info(f"request timed out (try {tries}/{retry})")
                 time.sleep(tries + 0.1 * rand())
-            if r.status_code == 429:
-                tries += 1
+            elif r.status_code == 429:
                 logger.info(f"rate limited (try {tries}/{retry})")
-                time.sleep(tries * 1.5 + 0.1 * rand())
+                time.sleep(tries * 2 + 0.2 * rand())
             else:
                 break
         r.raise_for_status()
@@ -252,6 +251,10 @@ def add_data(
 
     Parameters
     ----------
+    dates : datetime-like or array-like of datetime-like
+        One desired date/time or
+        an array, of which the min and max wil be used
+        as inclusive time bounds of the desired data.
     parameters : str or list of str, optional
         For example, ``'o3'`` or ``['pm25', 'o3']`` (default).
     country : str or list of str, optional
@@ -280,23 +283,35 @@ def add_data(
         Set to ``None`` for no time splitting.
         Default: 1 hour
         (OpenAQ data are hourly, so setting to something smaller won't help).
+        Ignored if only one date/time is provided.
     wide_fmt : bool
         Convert dataframe to wide format (one column per parameter).
     """
 
-    dates = pd.DatetimeIndex(dates)
+    dates = pd.to_datetime(dates)
+    if pd.api.types.is_scalar(dates):
+        dates = pd.DatetimeIndex([dates])
+    dates = dates.dropna()
+    if dates.empty:
+        raise ValueError("must provide at least one datetime-like")
+
     if parameters is None:
         parameters = ["pm25", "o3"]
     elif isinstance(parameters, str):
         parameters = [parameters]
-    query_dt = pd.to_timedelta(query_time_split)
-    if query_dt is not None and query_dt <= pd.Timedelta(0):
-        raise ValueError(
-            f"query_time_split must be positive, got {query_dt} from {query_time_split!r}"
-        )
+
+    query_dt = pd.to_timedelta(query_time_split) if len(dates) > 1 else None
     date_min, date_max = dates.min(), dates.max()
-    if date_min == date_max or len(dates) == 0:
-        raise ValueError("must provide at least two unique datetimes")
+    if query_dt is not None:
+        if query_dt <= pd.Timedelta(0):
+            raise ValueError(
+                f"query_time_split must be positive, got {query_dt} from {query_time_split!r}"
+            )
+        if date_min == date_max:
+            raise ValueError(
+                "must provide at least two unique datetimes to use query_time_split. "
+                "Set query_time_split=None to disable time splitting."
+            )
 
     if search_radius is not None:
         for coords, radius in search_radius.items():
