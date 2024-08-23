@@ -40,6 +40,7 @@ def _consume(url, *, params=None, timeout=10, retry=5, limit=500, npages=None):
         By default, try to fetch as many as needed to get all results.
     """
     import time
+    from random import random as rand
 
     if params is None:
         params = {}
@@ -70,11 +71,11 @@ def _consume(url, *, params=None, timeout=10, retry=5, limit=500, npages=None):
             if r.status_code == 408:
                 tries += 1
                 logger.info(f"request timed out (try {tries}/{retry})")
-                time.sleep(tries)
+                time.sleep(tries + 0.1 * rand())
             if r.status_code == 429:
                 tries += 1
                 logger.info(f"rate limited (try {tries}/{retry})")
-                time.sleep(tries * 1.5)
+                time.sleep(tries * 1.5 + 0.1 * rand())
             else:
                 break
         r.raise_for_status()
