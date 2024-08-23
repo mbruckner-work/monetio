@@ -19,12 +19,21 @@ if API_KEY is None:
         "Obtain one and set your OPENAQ_API_KEY environment variable."
     )
 
+_BASE_URL = "https://api.openaq.org"
+_ENDPOINTS = {
+    "locations": "/v2/locations",
+    "parameters": "/v2/parameters",
+    "measurements": "/v2/measurements",
+}
 
-def _consume(url, *, params=None, timeout=10, retry=5, limit=500, npages=None):
+
+def _consume(endpoint, *, params=None, timeout=10, retry=5, limit=500, npages=None):
     """Consume a paginated OpenAQ API endpoint.
 
     Parameters
     ----------
+    endpoint : str
+        API endpoint, e.g. ``'/v2/locations'``, ``'/v2/parameters'``, ``'/v2/measurements'``.
     params : dict, optional
         Parameters for the GET request to the API.
         Don't pass ``limit``, ``page``, or ``offset`` here, since they are covered
@@ -41,6 +50,12 @@ def _consume(url, *, params=None, timeout=10, retry=5, limit=500, npages=None):
     """
     import time
     from random import random as rand
+
+    if not endpoint.startswith("/"):
+        endpoint = "/" + endpoint
+    if not endpoint.startswith("/v2"):
+        endpoint = "/v2" + endpoint
+    url = _BASE_URL + endpoint
 
     if params is None:
         params = {}
@@ -106,7 +121,7 @@ def get_locations(**kwargs):
     https://api.openaq.org/docs#/v2/locations_get_v2_locations_get
     """
 
-    data = _consume("https://api.openaq.org/v2/locations", **kwargs)
+    data = _consume(_ENDPOINTS["locations"], **kwargs)
 
     # Some fields with scalar values to take
     some_scalars = [
@@ -170,7 +185,7 @@ def get_parameters(**kwargs):
     kwargs are passed to :func:`_consume`.
     """
 
-    data = _consume("https://api.openaq.org/v2/parameters", **kwargs)
+    data = _consume(_ENDPOINTS["parameters"], **kwargs)
 
     df = pd.DataFrame(data)
 
@@ -314,7 +329,7 @@ def add_data(
                         f"coords={coords} radius={radius}"
                     )
                     data_ = _consume(
-                        "https://api.openaq.org/v2/measurements",
+                        _ENDPOINTS["measurements"],
                         params=params,
                         **kwargs,
                     )
@@ -322,7 +337,7 @@ def add_data(
             else:
                 logger.info(f"parameter={parameter!r} t_from='{t_from}' t_to='{t_to}'")
                 data_ = _consume(
-                    "https://api.openaq.org/v2/measurements",
+                    _ENDPOINTS["measurements"],
                     params=params,
                     **kwargs,
                 )
