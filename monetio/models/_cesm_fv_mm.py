@@ -139,9 +139,11 @@ def open_mfdataset(
 
 def _ensure_mfdataset_filenames(fname):
     """Checks if dataset in netcdf format
+
     Parameters
     ----------
     fname : string or list of strings
+
     Returns
     -------
     type
@@ -163,9 +165,11 @@ def _ensure_mfdataset_filenames(fname):
 
 def _calc_pressure(dset):
     """Calculates midlayer pressure using P0, PS, hyam, hybm
+
     Parameters
     ----------
     dset: xr.Dataset
+
     Returns
     -------
     xr.DataArray
@@ -210,9 +214,11 @@ def _calc_pressure(dset):
 
 def _calc_hydrostatic_height(dset):
     """Calculates midlayer height using PMID, P, PS and PHIS, T,
+
     Parameters
     ----------
     dset: xr.Dataset
+
     Returns
     -------
     xr.DataArray
