@@ -95,6 +95,7 @@ def _consume(endpoint, *, params=None, timeout=10, retry=5, limit=500, npages=No
 
         tries = 0
         while tries < retry:
+            logger.debug(f"GET {url} params={params}")
             r = requests.get(url, params=params, headers=headers, timeout=timeout)
             if r.status_code == 408:
                 tries += 1
@@ -297,12 +298,13 @@ def add_data(
     if date_min == date_max or len(dates) == 0:
         raise ValueError("must provide at least two unique datetimes")
 
-    for coords, radius in search_radius.items():
-        if not 0 < radius <= 25_000:
-            raise ValueError(
-                f"invalid radius {radius!r} for location {coords!r}. "
-                "Must be positive and <= 25000 (25 km)."
-            )
+    if search_radius is not None:
+        for coords, radius in search_radius.items():
+            if not 0 < radius <= 25_000:
+                raise ValueError(
+                    f"invalid radius {radius!r} for location {coords!r}. "
+                    "Must be positive and <= 25000 (25 km)."
+                )
 
     if wide_fmt is True:
         raise NotImplementedError("wide format not implemented yet")
@@ -320,48 +322,46 @@ def add_data(
         else:
             yield date_min - one_sec, date_max
 
-    params = {}
+    base_params = {}
     if country is not None:
-        params.update(country=country)
+        base_params.update(country=country)
     if sites is not None:
-        params.update(location_id=sites)
+        base_params.update(location_id=sites)
     if entity is not None:
-        params.update(entity=entity)
+        base_params.update(entity=entity)
     if sensor_type is not None:
-        params.update(sensor_type=sensor_type)
+        base_params.update(sensor_type=sensor_type)
+
+    def iter_queries():
+        for parameter in parameters:
+            for t_from, t_to in iter_time_slices():
+                if search_radius is not None:
+                    for coords, radius in search_radius.items():
+                        lat, lon = coords
+                        yield {
+                            **base_params,
+                            "parameter": parameter,
+                            "date_from": t_from,
+                            "date_to": t_to,
+                            "coordinates": f"{lat:.8f},{lon:.8f}",
+                            "radius": radius,
+                        }
+                else:
+                    yield {
+                        **base_params,
+                        "parameter": parameter,
+                        "date_from": t_from,
+                        "date_to": t_to,
+                    }
 
     data = []
-    for parameter in parameters:
-        params.update(parameter=parameter)
-        for t_from, t_to in iter_time_slices():
-            params.update(
-                date_from=t_from,
-                date_to=t_to,
-            )
-            if search_radius is not None:
-                for coords, radius in search_radius.items():
-                    params.update(
-                        coordinates=f"{coords[0]:.8f},{coords[1]:.8f}",
-                        radius=radius,
-                    )
-                    logger.info(
-                        f"parameter={parameter!r} t_from='{t_from}' t_to='{t_to}' "
-                        f"coords={coords} radius={radius}"
-                    )
-                    data_ = _consume(
-                        _ENDPOINTS["measurements"],
-                        params=params,
-                        **kwargs,
-                    )
-                    data.extend(data_)
-            else:
-                logger.info(f"parameter={parameter!r} t_from='{t_from}' t_to='{t_to}'")
-                data_ = _consume(
-                    _ENDPOINTS["measurements"],
-                    params=params,
-                    **kwargs,
-                )
-                data.extend(data_)
+    for params in iter_queries():
+        data_ = _consume(
+            _ENDPOINTS["measurements"],
+            params=params,
+            **kwargs,
+        )
+        data.extend(data_)
 
     df = pd.DataFrame(data)
     if df.empty:
