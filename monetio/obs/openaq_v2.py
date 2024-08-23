@@ -435,7 +435,14 @@ def add_data(
     )
 
     # Site ID
-    df = df.rename(columns={"locationId": "siteid"})
+    df = df.rename(
+        columns={
+            "locationId": "siteid",
+            "isMobile": "is_mobile",
+            "isAnalysis": "is_analysis",
+            "sensorType": "sensor_type",
+        },
+    )
     df["siteid"] = df.siteid.astype(str)
 
     return df

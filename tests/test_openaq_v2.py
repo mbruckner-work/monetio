@@ -63,7 +63,7 @@ def test_get_data_near_ncwcp_search_radius():
     assert df.latitude.round().eq(39).all()
     assert df.longitude.round().eq(-77).all()
     assert (sorted(df.time.unique()) == dates).all()
-    assert not df.sensorType.eq("low-cost sensor").all()
+    assert not df.sensor_type.eq("low-cost sensor").all()
     assert df.entity.eq("Governmental Organization").all()
 
 
@@ -72,7 +72,7 @@ def test_get_data_near_ncwcp_sensor_type():
     dates = pd.date_range("2023-08-01", "2023-08-01 03:00", freq="1H")
     df = openaq.add_data(dates, sensor_type="low-cost sensor", search_radius={latlon: 25_000})
     assert len(df) > 0
-    assert df.sensorType.eq("low-cost sensor").all()
+    assert df.sensor_type.eq("low-cost sensor").all()
 
 
 def test_get_data_single_dt_single_site():
