@@ -94,9 +94,10 @@ def _open_one_dataset(fname, variable_dict):
 
 def apply_quality_flag(ds):
     """Mask variables in place based on quality flag
+
     Parameters
     ----------
-    ds: xr.Dataset
+    ds : xr.Dataset
     """
     if "quality_flag" in ds.attrs:
         quality_flag = ds[ds.attrs["quality_flag"]]
