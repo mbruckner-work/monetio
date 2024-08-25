@@ -21,13 +21,13 @@ def _open_one_dataset(fname, variable_dict):
     """Read locally stored INTELSAT TEMPO NO2 level 2
     Parameters
     ----------
-    fname: string
-        fname is local path to netcdf4 (HDF5) file
+    fname : str
+        Local path to netCDF4 (HDF5) file.
+    variable_dict : dict
 
-    variable_dict: dict
     Returns
     -------
-    ds: xarray dataset
+    ds : xr.Dataset
     """
     print("reading " + fname)
 
