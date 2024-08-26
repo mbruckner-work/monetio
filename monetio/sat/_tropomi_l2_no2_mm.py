@@ -65,6 +65,8 @@ def _open_one_dataset(fname, variable_dict):
 
     for varname, dct in variable_dict.items():
         print(varname)
+        if dct is None:
+            dct = {}
 
         if varname == "preslev":
             # Compute layered pressure and tropopause pressure
