@@ -61,10 +61,12 @@ def _open_one_dataset(fname, variable_dict):
         if dct_ is None:
             dct_ = variable_dict.get(varname_, {})
         group_name = dct_.get("group", default_group)
+        if isinstance(group_name, list):
+            group_name = group_name[0]
         return _get_values(dso[group_name][varname_], dct_)
 
     for varname, dct in variable_dict.items():
-        print(varname)
+        print(f"- {varname}")
         if dct is None:
             dct = {}
 
@@ -116,8 +118,15 @@ def _open_one_dataset(fname, variable_dict):
             var = dso[group_name][varname]
             values = _get_values(var, dct)
 
+            if values.ndim == 2:
+                dims = ("y", "x")
+            elif values.ndim == 3:
+                dims = ("y", "x", "z")
+            else:
+                raise ValueError(f"unexpected ndim ({varname}): {values.ndim}")
+
             ds[varname] = (
-                ("y", "x"),
+                dims,
                 values,
                 {"long_name": var.long_name, "units": var.units},
             )
@@ -125,6 +134,7 @@ def _open_one_dataset(fname, variable_dict):
             if "quality_flag_min" in dct:
                 ds.attrs["quality_flag"] = varname
                 ds.attrs["quality_thresh_min"] = dct["quality_flag_min"]
+                ds.attrs["var_applied"] = dct.get("var_applied", [])
 
     dso.close()
 
@@ -141,19 +151,20 @@ def _get_values(var, dct):
     if fv is not None and not np.ma.is_masked(values):
         values[values == fv] = np.nan
 
-    if "fillvalue" in dct:
-        fillvalue = dct["fillvalue"]
-        values[values == fillvalue] = np.nan
+    fv2 = dct.get("fillvalue")
+    if fv2 is not None and not np.ma.is_masked(values):
+        values[values == fv2] = np.nan
 
-    if "scale" in dct:
-        values *= dct["scale"]
+    scale = dct.get("scale")
+    if scale is not None:
+        values *= float(scale)
 
-    if "minimum" in dct:
-        minimum = dct["minimum"]
+    minimum = dct.get("minimum")
+    if minimum is not None:
         values[values < minimum] = np.nan
 
-    if "maximum" in dct:
-        maximum = dct["maximum"]
+    maximum = dct.get("maximum")
+    if maximum is not None:
         values[values > maximum] = np.nan
 
     return values
@@ -167,15 +178,14 @@ def apply_quality_flag(ds):
     ds : xarray.Dataset
     """
     if "quality_flag" in ds.attrs:
-        quality_flag = ds[ds.attrs["quality_flag"]]
+        quality_flag = ds[ds.attrs["quality_flag"]]  # quality flag variable (float)
         quality_thresh_min = ds.attrs["quality_thresh_min"]
 
-        # Apply the quality thresh minimum to all variables in ds
-        for varname in ds:
-            if varname != ds.attrs["quality_flag"]:
-                logging.debug(varname)
-                values = ds[varname].values
-                values[quality_flag <= quality_thresh_min] = np.nan
+        # Apply the quality thresh minimum to selected variables
+        for varname in ds.attrs["var_applied"]:
+            logging.debug(f"applying quality flag to {varname}")
+            values = ds[varname].values
+            values[quality_flag <= quality_thresh_min] = np.nan
 
 
 def open_dataset(fnames, variable_dict, debug=False):
@@ -226,12 +236,10 @@ def open_dataset(fnames, variable_dict, debug=False):
             envvar = subpath.replace("$", "")
             envval = os.getenv(envvar)
             if envval is None:
-                print("environment variable not defined: " + subpath)
-                exit(1)
+                raise RuntimeError(f"environment variable {envvar!r} not defined: " + subpath)
             else:
                 fnames = fnames.replace(subpath, envval)
 
-    print(fnames)
     files = sorted(glob(fnames))
     granules = OrderedDict()
     for file in files:

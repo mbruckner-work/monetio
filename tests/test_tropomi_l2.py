@@ -77,6 +77,7 @@ def test_open_dataset(test_file_path):
             "latitude_bounds": {},
             "longitude_bounds": {},
             "preslev": {},
+            "qa_value": None,
         },
     )[t_ref.strftime(r"%Y%m%d")]
 
@@ -95,3 +96,36 @@ def test_open_dataset(test_file_path):
     assert ds2.preslev.mean(dim=("y", "x")).diff("z").to_series().lt(0).all(), "surface first"
     assert not ds2["troppres"].isnull().all()
     assert ds2["troppres"].mean() < ds2["preslev"].mean()
+
+    qa = ds2["qa_value"]
+    assert not ds2[vn].where(qa <= 0.7).isnull().all()
+
+
+def test_open_dataset_qa(test_file_path):
+    vn = "nitrogendioxide_tropospheric_column"  # mol m-2
+    t_ref = pd.Timestamp("2019-07-15")
+
+    # Based on example YML from Meng
+    ds = open_dataset(
+        test_file_path,
+        {
+            "qa_value": {"quality_flag_min": 0.7, "var_applied": [vn], "fillvalue": None},
+            vn: {"scale": 60221410000000000000, "fillvalue": 9.96921e36},
+            "averaging_kernel": {"fillvalue": 9.96921e36},
+            "air_mass_factor_total": {"fillvalue": 9.96921e36},
+            "air_mass_factor_troposphere": {"fillvalue": 9.96921e36},
+            "latitude": None,
+            "longitude": None,
+            "preslev": {
+                "tm5_constant_a": {"group": ["PRODUCT"], "maximum": 9e36},
+                "tm5_constant_b": {"group": ["PRODUCT"], "maximum": 9e36},
+                "surface_pressure": {"group": ["PRODUCT/SUPPORT_DATA/INPUT_DATA"], "maximum": 9e36},
+                "tm5_tropopause_layer_index": {"group": ["PRODUCT"]},
+            },
+        },
+    )[t_ref.strftime(r"%Y%m%d")]
+
+    # assert {vn, "ph", "phb", "pb", "p", "T"} <= set(ds.data_vars)
+
+    qa = ds["qa_value"]
+    assert ds[vn].where(qa <= 0.7).isnull().all()
