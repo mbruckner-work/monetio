@@ -62,7 +62,48 @@ def _open_one_dataset(fname, variable_dict):
     ds.attrs["scan_num"] = dso.scan_num
 
     for varname in variable_dict:
-        values_var = dso.groups["product"][varname]
+        if varname in [
+            "main_data_quality_flag",
+            "vertical_column_troposphere",
+            "vertical_column_stratosphere",
+            "vertical_column_troposphere_uncertainty",
+        ]:
+            values_var = dso.groups["product"][varname]
+        elif varname in [
+            "latitude_bounds",
+            "longitude_bounds",
+            "solar_zenith_angle",
+            "solar_azimuth_angle",
+            "viewing_zenith_angle",
+            "viewing_azimuth_angle",
+            "relative_azimuth_angle",
+        ]:
+            values_var = dso.groups["geolocation"][varname]
+        elif varname in [
+            "vertical_column_total",
+            "vertical_column_total_uncertainty",
+            "fitted_slant_column",
+            "fitted_slant_column_uncertainty",
+            "snow_ice_fraction",
+            "terrain_height",
+            "ground_pixel_quality_flag",
+            "surface_pressure",
+            "tropopause_pressure",
+            "scattering_weights",
+            "gas_profile",
+            "albedo",
+            "temperature_profile",
+            "amf_total",
+            "amf_diagnositc_flag",
+            "eff_cloud_fraction",
+            "amf_cloud_fraction",
+            "amf_cloud_pressure",
+            "amf_troposphere",
+            "amf_stratosphere",
+        ]:
+            values_var = dso.groups["support_data"][varname]
+        elif varname in ["fit_rms_residual", "fit_convergence_flag"]:
+            values_var = dso.groups["qa_statistics"][varname]
         values = values_var[:].squeeze()
         fv = values_var.getncattr("_FillValue")
         if not np.isfinite(fv):
@@ -73,23 +114,69 @@ def _open_one_dataset(fname, variable_dict):
 
         if "minimum" in variable_dict[varname]:
             minimum = variable_dict[varname]["minimum"]
-            values[:][values[:] < minimum] = np.nan
+            values[:] = np.where(values[:] >= minimum, values[:], np.nan)
 
         if "maximum" in variable_dict[varname]:
             maximum = variable_dict[varname]["maximum"]
-            values[:][values[:] > maximum] = np.nan
+            values[:] = np.where(values[:] <= maximum, values[:], np.nan)
 
-        ds[varname] = (("x", "y"), values, values_var.__dict__)
+        # import pdb; pdb.set_trace()
+        if "corner" in values_var.dimensions:
+            ds[varname] = (("x", "y", "corner"), values, values_var.__dict__)
+        elif "swt_level" in values_var.dimensions:
+            ds[varname] = (("x", "y", "swt_level"), values, values_var.__dict__)
+        else:
+            ds[varname] = (("x", "y"), values, values_var.__dict__)
 
         if "quality_flag_max" in variable_dict[varname]:
             ds.attrs["quality_flag"] = varname
             ds.attrs["quality_thresh_max"] = variable_dict[varname]["quality_flag_max"]
 
     dso.close()
+    if "surface_pressure" in list(variable_dict.keys()):
+        ds["pressure_in_Pa"] = calculate_pressure(ds)
 
     return ds
 
-    # time_var = dso.groups["geolocation"]["time"]
+
+def calculate_pressure(ds):
+    """Calculates pressure at layer and delta_pressure of layer
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+
+    Returns
+    -------
+    layer_pressure: xr.DataArray
+        Pressure at layer in Pa
+    delta_pressure: xr.DataArray
+        Difference of pressure in layer
+    """
+    HPA2PA = 100
+    surf_pressure = ds["surface_pressure"]
+    eta_a = surf_pressure.Eta_A
+    eta_b = surf_pressure.Eta_B
+    n_layers = len(surf_pressure.Eta_A)
+    press = np.zeros((surf_pressure.shape[0], surf_pressure.shape[1], n_layers))
+    for k in range(0, n_layers):
+        press[:, :, k] = (eta_a[k] + eta_b[k] * surf_pressure.values) * HPA2PA
+    pressure = xr.DataArray(
+        data=press,
+        dims=("x", "y", "swt_level_stagg"),
+        coords={
+            "lon": (["x", "y"], surf_pressure.lon.values),
+            "lat": (["x", "y"], surf_pressure.lat.values),
+        },
+        attrs={
+            "long_name": "pressure",
+            "units": "Pa",
+            "valid_min": "0",
+            "valid_max": 120000,
+            "_FillValue": np.nan,
+        },
+    )
+    return pressure
 
 
 def apply_quality_flag(ds):
@@ -107,8 +194,7 @@ def apply_quality_flag(ds):
         for varname in ds:
             if varname != ds.attrs["quality_flag"]:
                 logging.debug(varname)
-                values = ds[varname].values
-                values[quality_flag > quality_thresh_max] = np.nan
+                ds[varname] = ds[varname].where(quality_flag <= quality_thresh_max)
 
 
 def open_dataset(fnames, variable_dict, debug=False):
