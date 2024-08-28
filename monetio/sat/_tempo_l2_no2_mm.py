@@ -114,14 +114,12 @@ def _open_one_dataset(fname, variable_dict):
 
         if "minimum" in variable_dict[varname]:
             minimum = variable_dict[varname]["minimum"]
-            values[:] = np.where(values[:] < minimum, np.nan, values[:])
-            #values[values < minimum] = np.nan
+            values = np.ma.masked_where(values < minimum, values)
 
         if "maximum" in variable_dict[varname]:
             maximum = variable_dict[varname]["maximum"]
-            values[:] = np.where(values[:] > maximum, np.nan, values[:])
+            values = np.ma.masked_where(values > maximum, values)
 
-        # import pdb; pdb.set_trace()
         if "corner" in values_var.dimensions:
             ds[varname] = (("x", "y", "corner"), values, values_var.__dict__)
         elif "swt_level" in values_var.dimensions:
