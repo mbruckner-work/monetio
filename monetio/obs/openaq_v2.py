@@ -9,6 +9,7 @@ import logging
 import os
 import warnings
 
+import numpy as np
 import pandas as pd
 import requests
 
@@ -435,7 +436,7 @@ def add_data(
         longitude=lon,
     )
 
-    # Site ID
+    # Rename columns and ensure site ID is string
     df = df.rename(
         columns={
             "locationId": "siteid",
@@ -445,5 +446,42 @@ def add_data(
         },
     )
     df["siteid"] = df.siteid.astype(str)
+
+    # Most variables invalid if < 0
+    # > preferredUnit.value_counts()
+    # ppb              19
+    # µg/m³            13
+    # ppm              10
+    # particles/cm³     8
+    # %                 3  relative humidity
+    # umol/mol          1
+    # ng/m3             1
+    # deg               1  wind direction
+    # m/s               1  wind speed
+    # deg_c             1
+    # hpa               1
+    # ugm3              1
+    # c                 1
+    # f                 1
+    # mb                1
+    # iaq               1
+    non_neg_units = [
+        "particles/cm³",
+        "ppm",
+        "ppb",
+        "umol/mol",
+        "µg/m³",
+        "ugm3",
+        "ng/m3",
+        "iaq",
+        #
+        "%",
+        #
+        "m/s",
+        #
+        "hpa",
+        "mb",
+    ]
+    df.loc[df.unit.isin(non_neg_units) & (df.value < 0), "value"] = np.nan
 
     return df

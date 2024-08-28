@@ -52,6 +52,7 @@ def test_get_data_near_ncwcp_sites():
     assert df.longitude.round().eq(-77).all()
     assert (sorted(df.time.unique()) == dates).all()
     assert set(df.siteid) <= {str(site) for site in sites}
+    assert not df.value.isna().all() and not df.value.lt(0).any()
 
 
 def test_get_data_near_ncwcp_search_radius():
