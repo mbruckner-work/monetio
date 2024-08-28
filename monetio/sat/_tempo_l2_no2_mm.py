@@ -114,11 +114,12 @@ def _open_one_dataset(fname, variable_dict):
 
         if "minimum" in variable_dict[varname]:
             minimum = variable_dict[varname]["minimum"]
-            values[:] = np.where(values[:] >= minimum, values[:], np.nan)
+            values[:] = np.where(values[:] < minimum, np.nan, values[:])
+            #values[values < minimum] = np.nan
 
         if "maximum" in variable_dict[varname]:
             maximum = variable_dict[varname]["maximum"]
-            values[:] = np.where(values[:] <= maximum, values[:], np.nan)
+            values[:] = np.where(values[:] > maximum, np.nan, values[:])
 
         # import pdb; pdb.set_trace()
         if "corner" in values_var.dimensions:
@@ -136,7 +137,7 @@ def _open_one_dataset(fname, variable_dict):
     if "surface_pressure" in list(variable_dict.keys()):
         ds["pressure_in_Pa"] = calculate_pressure(ds)
 
-    return ds
+    return xr.decode_cf(ds)
 
 
 def calculate_pressure(ds):
@@ -194,7 +195,7 @@ def apply_quality_flag(ds):
         for varname in ds:
             if varname != ds.attrs["quality_flag"]:
                 logging.debug(varname)
-                ds[varname] = ds[varname].where(quality_flag <= quality_thresh_max)
+                ds[varname] = ds[varname].where(~(quality_flag > quality_thresh_max))
 
 
 def open_dataset(fnames, variable_dict, debug=False):
