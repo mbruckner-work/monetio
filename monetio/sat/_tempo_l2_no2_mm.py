@@ -11,6 +11,7 @@ import sys
 from collections import OrderedDict
 from glob import glob
 from pathlib import Path
+import warnings
 
 import numpy as np
 import xarray as xr
@@ -60,6 +61,11 @@ def _open_one_dataset(fname, variable_dict):
     ds.attrs["reference_time_string"] = dso.time_coverage_start
     ds.attrs["granule_number"] = dso.granule_num
     ds.attrs["scan_num"] = dso.scan_num
+
+    if ("pressure" in variable_dict) and "surface_pressure" not in variable_dict:
+        warnings.warn("Calculating pressure in TEMPO data requires surface_pressure. "
+                     + "Adding surface_pressure to output variables")
+        variable_dict["surface_pressure"] = {}
 
     for varname in variable_dict:
         if varname in [
@@ -132,8 +138,15 @@ def _open_one_dataset(fname, variable_dict):
             ds.attrs["quality_thresh_max"] = variable_dict[varname]["quality_flag_max"]
 
     dso.close()
-    if "surface_pressure" in list(variable_dict.keys()):
-        ds["pressure_in_Pa"] = calculate_pressure(ds)
+    if ds["surface_pressure"].attrs["units"] == "hPa":
+        HPA2PA = 100
+        ds["surface_pressure"][:] = ds["surface_pressure"].values * HPA2PA
+        ds["surface_pressure"].attrs["units"] = "Pa"
+        ds["surface_pressure"].attrs["valid_min"] *= HPA2PA
+        ds["surface_pressure"].attrs["valid_max"] *= HPA2PA
+        ds["surface_pressure"].attrs["Eta_A"] *= HPA2PA
+    if "pressure" in list(variable_dict.keys()):
+        ds["pressure"] = calculate_pressure(ds)
 
     return xr.decode_cf(ds)
 
@@ -152,14 +165,13 @@ def calculate_pressure(ds):
     delta_pressure: xr.DataArray
         Difference of pressure in layer
     """
-    HPA2PA = 100
     surf_pressure = ds["surface_pressure"]
     eta_a = surf_pressure.Eta_A
     eta_b = surf_pressure.Eta_B
     n_layers = len(surf_pressure.Eta_A)
     press = np.zeros((surf_pressure.shape[0], surf_pressure.shape[1], n_layers))
     for k in range(0, n_layers):
-        press[:, :, k] = (eta_a[k] + eta_b[k] * surf_pressure.values) * HPA2PA
+        press[:, :, k] = (eta_a[k] + eta_b[k] * surf_pressure.values)
     pressure = xr.DataArray(
         data=press,
         dims=("x", "y", "swt_level_stagg"),
@@ -169,9 +181,10 @@ def calculate_pressure(ds):
         },
         attrs={
             "long_name": "pressure",
-            "units": "Pa",
-            "valid_min": "0",
-            "valid_max": 120000,
+            "units": surf_pressure.attrs["units"],
+            "valid_min": surf_pressure.attrs["valid_min"],
+            "valid_max": surf_pressure.attrs["valid_max"],
+            "algorithm": "Calculated from hybrid coords as Eta_A + Eta_B * surface_pressure",
             "_FillValue": np.nan,
         },
     )
