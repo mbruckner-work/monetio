@@ -8,10 +8,10 @@ History:
 import logging
 import os
 import sys
+import warnings
 from collections import OrderedDict
 from glob import glob
 from pathlib import Path
-import warnings
 
 import numpy as np
 import xarray as xr
@@ -63,8 +63,10 @@ def _open_one_dataset(fname, variable_dict):
     ds.attrs["scan_num"] = dso.scan_num
 
     if ("pressure" in variable_dict) and "surface_pressure" not in variable_dict:
-        warnings.warn("Calculating pressure in TEMPO data requires surface_pressure. "
-                     + "Adding surface_pressure to output variables")
+        warnings.warn(
+            "Calculating pressure in TEMPO data requires surface_pressure. "
+            + "Adding surface_pressure to output variables"
+        )
         variable_dict["surface_pressure"] = {}
 
     for varname in variable_dict:
@@ -171,7 +173,7 @@ def calculate_pressure(ds):
     n_layers = len(surf_pressure.Eta_A)
     press = np.zeros((surf_pressure.shape[0], surf_pressure.shape[1], n_layers))
     for k in range(0, n_layers):
-        press[:, :, k] = (eta_a[k] + eta_b[k] * surf_pressure.values)
+        press[:, :, k] = eta_a[k] + eta_b[k] * surf_pressure.values
     pressure = xr.DataArray(
         data=press,
         dims=("x", "y", "swt_level_stagg"),
