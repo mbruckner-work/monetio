@@ -63,17 +63,24 @@ def test_open_dataset(test_file_path):
     assert set(ds) == {vn}
     assert set(ds.attrs) == {"granule_number", "reference_time_string", "scan_num"}
 
-    # ds2 = open_dataset(
-    #     test_file_path, {vn: {}, "main_data_quality_flag": {"quality_flag_max": 0}, "pressure": {}}
-    # )[t_ref]
-    # print(list(ds2.variables))
-    # assert set(ds2.variables) == {
-    #     "lat",
-    #     "lon",
-    #     "main_data_quality_flag",
-    #     "pressure",
-    #     "surface_pressure",
-    #     "time",
-    #     "vertical_column_troposphere",
-    # }
-    # assert set(ds2["pressure"].dims) == {"swt_level_stagg", "x", "y"}
+    with pytest.warns(UserWarning):
+        ds2 = open_dataset(
+            test_file_path,
+            {vn: {}, "main_data_quality_flag": {"quality_flag_max": 0}, "pressure": {}},
+        )[t_ref]
+        warnings.warn(
+            "Calculating pressure in TEMPO data requires surface_pressure. "
+            + "Adding surface_pressure to output variables",
+            UserWarning,
+        )
+    print(list(ds2.variables))
+    assert set(ds2.variables) == {
+        "lat",
+        "lon",
+        "main_data_quality_flag",
+        "pressure",
+        "surface_pressure",
+        "time",
+        "vertical_column_troposphere",
+    }
+    assert set(ds2["pressure"].dims) == {"swt_level_stagg", "x", "y"}
