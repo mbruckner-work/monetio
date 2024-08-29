@@ -54,8 +54,6 @@ def _open_one_dataset(fname, variable_dict):
         time_var[:].squeeze(),
         {"long_name": time_var.long_name, "units": time_var.units},
     )
-    ds["lon"] = ds["lon"].fillna(-999.99)
-    ds["lat"] = ds["lat"].fillna(-999.99)
     ds = ds.set_coords(["time", "lon", "lat"])
 
     ds.attrs["reference_time_string"] = dso.time_coverage_start
