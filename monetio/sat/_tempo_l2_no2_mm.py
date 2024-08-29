@@ -111,9 +111,6 @@ def _open_one_dataset(fname, variable_dict):
         elif varname in ["fit_rms_residual", "fit_convergence_flag"]:
             values_var = dso.groups["qa_statistics"][varname]
         values = values_var[:].squeeze()
-        fv = values_var.getncattr("_FillValue")
-        if not np.isfinite(fv):
-            values[:][values[:] == fv] = np.nan
 
         if "scale" in variable_dict[varname]:
             values[:] = variable_dict[varname]["scale"] * values[:]
