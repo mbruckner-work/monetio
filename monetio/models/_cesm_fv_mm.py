@@ -38,9 +38,14 @@ def open_mfdataset(
     Returns
     -------
     xarray.DataSet
-
-
     """
+
+    if not surf_only:
+        warnings.warn(
+            "3D data processing is still experimental in CESM-Fv (CAM-Chem), "
+            + "and has not been properly tested. Use at own risk."
+        )
+
     from pyresample.utils import wrap_longitudes
 
     # check that the files are netcdf format
