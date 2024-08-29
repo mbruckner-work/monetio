@@ -68,12 +68,6 @@ def test_open_dataset(test_file_path):
             test_file_path,
             {vn: {}, "main_data_quality_flag": {"quality_flag_max": 0}, "pressure": {}},
         )[t_ref]
-        warnings.warn(
-            "Calculating pressure in TEMPO data requires surface_pressure. "
-            + "Adding surface_pressure to output variables",
-            UserWarning,
-        )
-    print(list(ds2.variables))
     assert set(ds2.variables) == {
         "lat",
         "lon",
