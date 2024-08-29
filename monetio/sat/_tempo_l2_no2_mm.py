@@ -140,14 +140,15 @@ def _open_one_dataset(fname, variable_dict):
             ds.attrs["quality_thresh_max"] = variable_dict[varname]["quality_flag_max"]
 
     dso.close()
-    if ds["surface_pressure"].attrs["units"] == "hPa":
-        HPA2PA = 100
-        ds["surface_pressure"][:] = ds["surface_pressure"].values * HPA2PA
-        ds["surface_pressure"].attrs["units"] = "Pa"
-        ds["surface_pressure"].attrs["valid_min"] *= HPA2PA
-        ds["surface_pressure"].attrs["valid_max"] *= HPA2PA
-        ds["surface_pressure"].attrs["Eta_A"] *= HPA2PA
-    if "pressure" in list(variable_dict.keys()):
+    if "surface_pressure" in variable_dict:
+        if ds["surface_pressure"].attrs["units"] == "hPa":
+            HPA2PA = 100
+            ds["surface_pressure"][:] = ds["surface_pressure"].values * HPA2PA
+            ds["surface_pressure"].attrs["units"] = "Pa"
+            ds["surface_pressure"].attrs["valid_min"] *= HPA2PA
+            ds["surface_pressure"].attrs["valid_max"] *= HPA2PA
+            ds["surface_pressure"].attrs["Eta_A"] *= HPA2PA
+    if "pressure" in variable_dict:
         ds["pressure"] = calculate_pressure(ds)
 
     return xr.decode_cf(ds)
