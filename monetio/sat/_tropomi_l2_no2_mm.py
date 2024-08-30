@@ -147,6 +147,9 @@ def _get_values(var, dct):
 
     values = var[:].squeeze()
 
+    if np.ma.is_masked(values):
+        logging.info(f"{var.name} already masked")
+
     scale = dct.get("scale")
     if scale is not None:
         values *= float(scale)
