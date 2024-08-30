@@ -55,6 +55,17 @@ def test_get_data_near_ncwcp_sites():
     assert not df.value.isna().all() and not df.value.lt(0).any()
 
 
+def test_get_data_near_ncwcp_sites_wide():
+    sites = SITES_NEAR_NCWCP
+    dates = pd.date_range("2023-08-01", "2023-08-01 01:00", freq="1H")
+
+    with pytest.warns(UserWarning, match=r"dropping '.*' from index for wide fmt \(all null\)"):
+        df = openaq.add_data(dates, sites=sites, wide_fmt=True)
+    assert len(df) > 0
+    assert {"pm25_ugm3", "o3_ppm"} <= set(df.columns)
+    assert not {"parameter", "value", "unit"} <= set(df.columns)
+
+
 def test_get_data_near_ncwcp_search_radius():
     latlon = LATLON_NCWCP
     dates = pd.date_range("2023-08-01", "2023-08-01 01:00", freq="1H")
@@ -96,11 +107,6 @@ def test_get_data_near_ncwcp_entity(entity):
     dates = pd.date_range("2023-08-01", "2023-08-01 01:00", freq="1H")
     df = openaq.add_data(dates, entity=entity, search_radius={latlon: 25_000})
     assert df.empty
-
-
-def test_get_data_wide_error():
-    with pytest.raises(NotImplementedError, match="wide format not implemented"):
-        openaq.add_data(["2023-08-01", "2023-08-02"], wide_fmt=True)
 
 
 @pytest.mark.parametrize(

@@ -17,6 +17,37 @@ logger = logging.getLogger(__name__)
 
 API_KEY = os.environ.get("OPENAQ_API_KEY", None)
 
+_PPM_TO_UGM3 = {
+    "o3": 1990,
+    "co": 1160,
+    "no2": 1900,
+    "no": 1240,
+    "so2": 2650,
+    "ch4": 664,
+    "co2": 1820,
+}
+"""Conversion factors from ppmv to µg/m³.
+
+Based on
+
+- air average molecular weight: 29 g/mol
+- air density: 1.2 kg m -3
+
+and rounded to 3 significant figures.
+"""
+
+# NOx assumption
+_PPM_TO_UGM3["nox"] = _PPM_TO_UGM3["no2"]
+
+_NON_MOLEC_PARAMS = [
+    "pm1",
+    "pm25",
+    "pm4",
+    "pm10",
+    "bc",
+]
+"""Parameters that are not molecules and should be in µg/m³ units."""
+
 
 def _api_key_warning(func):
     @functools.wraps(func)
@@ -288,6 +319,12 @@ def add_data(
         Ignored if only one date/time is provided.
     wide_fmt : bool
         Convert dataframe to wide format (one column per parameter).
+        Note that for some variables that involves conversion from
+        µg/m³ to ppmv.
+        This conversion is based on an average air molecular weight of 29 g/mol
+        and an air density of 1.2 kg/m³.
+        Use ``wide_fmt=False`` if you want to do the conversion yourself.
+        In some cases, the conversion to wide format also reduces the amount of data returned.
     """
 
     dates = pd.to_datetime(dates)
@@ -322,9 +359,6 @@ def add_data(
                     f"invalid radius {radius!r} for location {coords!r}. "
                     "Must be positive and <= 25000 (25 km)."
                 )
-
-    if wide_fmt is True:
-        raise NotImplementedError("wide format not implemented yet")
 
     def iter_time_slices():
         # seems that (from < time <= to) == (from , to] is used
@@ -483,5 +517,58 @@ def add_data(
         "mb",
     ]
     df.loc[df.unit.isin(non_neg_units) & (df.value < 0), "value"] = np.nan
+
+    if wide_fmt:
+        # Normalize units
+        for vn, f in _PPM_TO_UGM3.items():
+            is_ug = (df.parameter == vn) & (df.unit == "µg/m³")
+            df.loc[is_ug, "value"] /= f
+            df.loc[is_ug, "unit"] = "ppm"
+
+        # Warn if inconsistent units
+        p_units = df.groupby("parameter").unit.unique()
+        unique = p_units.apply(len).eq(1)
+        if not unique.all():
+            p_units_non_unique = p_units[~unique]
+            warnings.warn(f"inconsistent units among parameters:\n{p_units_non_unique}")
+
+        # Pivot
+        index = [
+            "siteid",
+            "time",
+            "latitude",
+            "longitude",
+            "time_local",
+            "utcoffset",
+            #
+            "location",
+            "city",
+            "country",
+            #
+            "entity",
+            "sensor_type",
+            "is_mobile",
+            "is_analysis",
+        ]
+        dupes = df[df.duplicated(keep=False)]
+        if not dupes.empty:
+            logging.info(f"found {dupes.sum()} duplicated rows")
+        for col in index:
+            if df[col].isnull().all():
+                index.remove(col)
+                warnings.warn(f"dropping {col!r} from index for wide fmt (all null)")
+        df = (
+            df.drop_duplicates(keep="first")
+            .pivot_table(
+                values="value",
+                index=index,
+                columns="parameter",
+            )
+            .reset_index()
+        )
+
+        # Rename so that units are clear
+        df = df.rename(columns={p: f"{p}_ugm3" for p in _NON_MOLEC_PARAMS}, errors="ignore")
+        df = df.rename(columns={p: f"{p}_ppm" for p in _PPM_TO_UGM3}, errors="ignore")
 
     return df
