@@ -77,4 +77,4 @@ def test_open_dataset(test_file_path):
         "time",
         "vertical_column_troposphere",
     }
-    assert set(ds2["pressure"].dims) == {"swt_level_stagg", "x", "y"}
+    assert ds2["pressure"].dims == ("swt_level_stagg", "x", "y")
