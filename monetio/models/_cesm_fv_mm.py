@@ -37,12 +37,12 @@ def open_mfdataset(
 
     Returns
     -------
-    xarray.DataSet
+    xarray.Dataset
     """
 
     if not surf_only:
         warnings.warn(
-            "3D data processing is still experimental in CESM-Fv (CAM-Chem), "
+            "3D data processing is still experimental in CESM-FV (CAM-Chem), "
             + "and has not been properly tested. Use at own risk."
         )
 
