@@ -63,7 +63,13 @@ def test_open_dataset(test_file_path):
     assert set(ds) == {vn}
     assert set(ds.attrs) == {"granule_number", "reference_time_string", "scan_num"}
 
-    with pytest.warns(UserWarning):
+    with pytest.warns(
+        UserWarning,
+        match=(
+            "Calculating pressure in TEMPO data requires surface_pressure. "
+            + "Adding surface_pressure to output variables"
+        ),
+    ):
         ds2 = open_dataset(
             test_file_path,
             {vn: {}, "main_data_quality_flag": {"quality_flag_max": 0}, "pressure": {}},
