@@ -142,8 +142,8 @@ def _open_one_dataset(fname, variable_dict):
 
 
 def _get_values(var, dct):
-    """Take netCDF4 Variable, squeeze, tweak values based on nc fill value attribute
-    and user-provided attribute dict, return NumPy array."""
+    """Take netCDF4 Variable, squeeze, tweak values based on user-provided attribute dict,
+    and return NumPy array."""
 
     values = var[:].squeeze()
 
