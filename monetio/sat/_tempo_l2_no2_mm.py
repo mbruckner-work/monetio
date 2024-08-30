@@ -12,10 +12,10 @@ import warnings
 from collections import OrderedDict
 from glob import glob
 from pathlib import Path
-from cftime import num2pydate
 
 import numpy as np
 import xarray as xr
+from cftime import num2pydate
 from netCDF4 import Dataset
 
 
@@ -40,7 +40,6 @@ def _open_one_dataset(fname, variable_dict):
     lat_var = dso.groups["geolocation"]["latitude"]
     time_var = dso.groups["geolocation"]["time"]
     time_units = time_var.units
-    #import pdb; pdb.set_trace()
 
     ds["lon"] = (
         ("x", "y"),
@@ -57,7 +56,6 @@ def _open_one_dataset(fname, variable_dict):
         num2pydate(time_var[:].squeeze(), time_units),
         {"long_name": time_var.long_name, "units": time_var.units},
     )
-    #ds["time"] = num2pydate(ds["time"], ds["time"].units)
     ds = ds.set_coords(["time", "lon", "lat"])
 
     ds.attrs["reference_time_string"] = dso.time_coverage_start
@@ -121,11 +119,11 @@ def _open_one_dataset(fname, variable_dict):
 
         if "minimum" in variable_dict[varname]:
             minimum = variable_dict[varname]["minimum"]
-            values = np.ma.masked_where(values < minimum, values)
+            values = np.ma.masked_less(values, minimum, copy=False)
 
         if "maximum" in variable_dict[varname]:
             maximum = variable_dict[varname]["maximum"]
-            values = np.ma.masked_where(values > maximum, values)
+            values = np.ma.masked_greater(values, maximum, copy=False)
 
         if "corner" in values_var.dimensions:
             ds[varname] = (("x", "y", "corner"), values, values_var.__dict__)
@@ -177,7 +175,7 @@ def calculate_pressure(ds):
         press[:, :, k] = eta_a[k] + eta_b[k] * surf_pressure.values
     pressure = xr.DataArray(
         data=press,
-        dims=("x", "y", "swt_level_stagg"),
+        dims=("swt_level_stagg", "x", "y"),
         coords={
             "lon": (["x", "y"], surf_pressure.lon.values),
             "lat": (["x", "y"], surf_pressure.lat.values),
