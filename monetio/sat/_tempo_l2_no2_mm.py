@@ -170,9 +170,9 @@ def calculate_pressure(ds):
     eta_a = surf_pressure.Eta_A
     eta_b = surf_pressure.Eta_B
     n_layers = len(surf_pressure.Eta_A)
-    press = np.zeros((surf_pressure.shape[0], surf_pressure.shape[1], n_layers))
+    press = np.zeros((n_layers, surf_pressure.shape[0], surf_pressure.shape[1]))
     for k in range(0, n_layers):
-        press[:, :, k] = eta_a[k] + eta_b[k] * surf_pressure.values
+        press[k, :, :] = eta_a[k] + eta_b[k] * surf_pressure.values
     pressure = xr.DataArray(
         data=press,
         dims=("swt_level_stagg", "x", "y"),
