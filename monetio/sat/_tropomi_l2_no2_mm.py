@@ -60,7 +60,7 @@ def _open_one_dataset(fname, variable_dict):
     ds["scan_time"] = ds["time"] + dtime
     ds["scan_time"].attrs.update({"long_name": "scan time"})
     ds = ds.set_coords(["lon", "lat", "time", "scan_time"])
-    ds.attrs["reference_time_string"] = ref_time_val.astype(datetime).strftime(r"%Y%m%d")
+    ds.attrs["reference_time_string"] = ref_time_val.astype(datetime).strftime(r"%Y-%m-%d")
 
     def get_extra(varname_, *, dct_=None, default_group="PRODUCT"):
         """Get non-varname variables."""
@@ -221,7 +221,8 @@ def open_dataset(fnames, variable_dict, debug=False):
     Returns
     -------
     OrderedDict
-        Dict mapping reference time string (date) to :class:`xarray.Dataset` of the granule.
+        Dict mapping reference time string (date, YYYY-MM-DD)
+        to a list of :class:`xarray.Dataset` granules.
     """
     if debug:
         logging_level = logging.DEBUG
@@ -251,6 +252,10 @@ def open_dataset(fnames, variable_dict, debug=False):
     for file in files:
         granule = _open_one_dataset(file, variable_dict)
         apply_quality_flag(granule)
-        granules[granule.attrs["reference_time_string"]] = granule
+        key = granule.attrs["reference_time_string"]
+        if key in granules:
+            granules[key].append(granule)
+        else:
+            granules[key] = [granule]
 
     return granules

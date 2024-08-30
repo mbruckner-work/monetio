@@ -54,11 +54,14 @@ def test_file_path(tmp_path_factory, worker_id):
             return p_test
 
 
+T_REF = pd.Timestamp("2019-07-15")
+KEY = T_REF.strftime(r"%Y-%m-%d")
+
+
 def test_open_dataset(test_file_path):
     vn = "nitrogendioxide_tropospheric_column"  # mol m-2
-    t_ref = pd.Timestamp("2019-07-15")
 
-    ds = open_dataset(test_file_path, vn)[t_ref.strftime(r"%Y%m%d")]
+    ds = open_dataset(test_file_path, vn)[KEY][0]
 
     assert set(ds.coords) == {"time", "lat", "lon", "scan_time"}
     assert set(ds) == {vn}
@@ -68,8 +71,8 @@ def test_open_dataset(test_file_path):
     assert ds[vn].min() < 0
 
     assert ds.time.ndim == 0
-    assert pd.Timestamp(ds.time.values) == t_ref
-    assert (ds.scan_time.dt.floor("D") == t_ref).all()
+    assert pd.Timestamp(ds.time.values) == T_REF
+    assert (ds.scan_time.dt.floor("D") == T_REF).all()
 
     ds2 = open_dataset(
         test_file_path,
@@ -80,7 +83,7 @@ def test_open_dataset(test_file_path):
             "preslev": {},
             "qa_value": None,
         },
-    )[t_ref.strftime(r"%Y%m%d")]
+    )[KEY][0]
 
     assert not ds2[vn].isnull().all()
     assert ds2[vn].min() >= 1e-9
@@ -104,7 +107,6 @@ def test_open_dataset(test_file_path):
 
 def test_open_dataset_qa(test_file_path):
     vn = "nitrogendioxide_tropospheric_column"  # mol m-2
-    t_ref = pd.Timestamp("2019-07-15")
 
     # Based on example YML from Meng
     ds = open_dataset(
@@ -124,7 +126,7 @@ def test_open_dataset_qa(test_file_path):
                 "tm5_tropopause_layer_index": {"group": ["PRODUCT"]},
             },
         },
-    )[t_ref.strftime(r"%Y%m%d")]
+    )[KEY][0]
 
     # assert {vn, "ph", "phb", "pb", "p", "T"} <= set(ds.data_vars)
 
@@ -134,15 +136,15 @@ def test_open_dataset_qa(test_file_path):
 
 def test_open_dataset_opts(test_file_path):
     vn = "nitrogendioxide_tropospheric_column"  # mol m-2
-    t_ref = pd.Timestamp("2019-07-15")
 
     def get(**kwargs):
-        return open_dataset(
+        granules = open_dataset(
             test_file_path,
             {
                 vn: kwargs,
             },
-        )[t_ref.strftime(r"%Y%m%d")]
+        )
+        return granules[KEY][0]
 
     def om(x):
         return np.floor(np.log10(x))
