@@ -2,6 +2,7 @@ import shutil
 import warnings
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 from filelock import FileLock
@@ -129,3 +130,39 @@ def test_open_dataset_qa(test_file_path):
 
     qa = ds["qa_value"]
     assert ds[vn].where(qa <= 0.7).isnull().all()
+
+
+def test_open_dataset_opts(test_file_path):
+    vn = "nitrogendioxide_tropospheric_column"  # mol m-2
+    t_ref = pd.Timestamp("2019-07-15")
+
+    def get(**kwargs):
+        return open_dataset(
+            test_file_path,
+            {
+                vn: kwargs,
+            },
+        )[t_ref.strftime(r"%Y%m%d")]
+
+    ds0 = get()
+    assert 2e-6 < ds0[vn].mean() < 3e-6
+    assert ds0[vn].min() < 0
+    assert 1e-4 < ds0[vn].max() < 1e-3
+    assert np.isclose(ds0[vn], 0, atol=0).sum() == 0
+
+    ds = get(scale=1000)
+    assert 2e-3 < ds[vn].mean() < 3e-3
+
+    ds = get(minimum=0)
+    assert ds[vn].min() >= 0
+    n = ds[vn].isnull().sum()
+    tgt = 1.0311603546142578e-05
+    assert np.isclose(ds[vn], tgt, atol=0).sum() > 0
+
+    ds = get(maximum=1e-5)
+    assert ds[vn].max() <= 1e-5
+
+    ds = get(minimum=0, fillvalue=tgt)
+    assert ds[vn].min() > 0
+    assert ds[vn].isnull().sum() > n
+    assert np.isclose(ds[vn], tgt, atol=0).sum() == 0

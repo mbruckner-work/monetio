@@ -147,21 +147,22 @@ def _get_values(var, dct):
 
     values = var[:].squeeze()
 
-    fv2 = dct.get("fillvalue")
-    if fv2 is not None and not np.ma.is_masked(values):
-        values[values == fv2] = np.nan
-
     scale = dct.get("scale")
     if scale is not None:
         values *= float(scale)
 
+    # Note netcdf4-python masks based on nc _FillValue attr automatically
+    fv = dct.get("fillvalue")
+    if fv is not None:
+        values = np.ma.masked_values(values, fv, atol=0, copy=False)
+
     minimum = dct.get("minimum")
     if minimum is not None:
-        values[values < minimum] = np.nan
+        values = np.ma.masked_less(values, minimum, copy=False)
 
     maximum = dct.get("maximum")
     if maximum is not None:
-        values[values > maximum] = np.nan
+        values = np.ma.masked_greater(values, maximum, copy=False)
 
     return values
 
