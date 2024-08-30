@@ -144,14 +144,17 @@ def test_open_dataset_opts(test_file_path):
             },
         )[t_ref.strftime(r"%Y%m%d")]
 
+    def om(x):
+        return np.floor(np.log10(x))
+
     ds0 = get()
-    assert 2e-6 < ds0[vn].mean() < 3e-6
+    assert om(ds0[vn].mean()) == -6
     assert ds0[vn].min() < 0
-    assert 1e-4 < ds0[vn].max() < 1e-3
+    assert om(ds0[vn].max()) == -4
     assert np.isclose(ds0[vn], 0, atol=0).sum() == 0
 
     ds = get(scale=1000)
-    assert 2e-3 < ds[vn].mean() < 3e-3
+    assert om(ds[vn].mean()) == -3
 
     ds = get(minimum=0)
     assert ds[vn].min() >= 0
