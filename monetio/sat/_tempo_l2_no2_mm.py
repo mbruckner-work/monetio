@@ -12,6 +12,7 @@ import warnings
 from collections import OrderedDict
 from glob import glob
 from pathlib import Path
+from cftime import num2pydate
 
 import numpy as np
 import xarray as xr
@@ -38,6 +39,8 @@ def _open_one_dataset(fname, variable_dict):
     lon_var = dso.groups["geolocation"]["longitude"]
     lat_var = dso.groups["geolocation"]["latitude"]
     time_var = dso.groups["geolocation"]["time"]
+    time_units = time_var.units
+    #import pdb; pdb.set_trace()
 
     ds["lon"] = (
         ("x", "y"),
@@ -51,9 +54,10 @@ def _open_one_dataset(fname, variable_dict):
     )
     ds["time"] = (
         ("time",),
-        time_var[:].squeeze(),
+        num2pydate(time_var[:].squeeze(), time_units),
         {"long_name": time_var.long_name, "units": time_var.units},
     )
+    #ds["time"] = num2pydate(ds["time"], ds["time"].units)
     ds = ds.set_coords(["time", "lon", "lat"])
 
     ds.attrs["reference_time_string"] = dso.time_coverage_start
@@ -135,6 +139,7 @@ def _open_one_dataset(fname, variable_dict):
             ds.attrs["quality_thresh_max"] = variable_dict[varname]["quality_flag_max"]
 
     dso.close()
+
     if "surface_pressure" in variable_dict:
         if ds["surface_pressure"].attrs["units"] == "hPa":
             HPA2PA = 100
@@ -146,7 +151,7 @@ def _open_one_dataset(fname, variable_dict):
     if "pressure" in variable_dict:
         ds["pressure"] = calculate_pressure(ds)
 
-    return xr.decode_cf(ds)
+    return ds
 
 
 def calculate_pressure(ds):
