@@ -1,4 +1,10 @@
-"""Read TROPOMI L2 NO2 data."""
+"""Read TROPOMI L2 NO2 data.
+
+TROPOspheric Monitoring Instrument (TROPOMI) instrument.
+
+http://www.tropomi.eu
+https://sentinels.copernicus.eu/web/sentinel/missions/sentinel-5p
+"""
 
 import logging
 import os
