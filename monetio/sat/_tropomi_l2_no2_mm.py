@@ -147,10 +147,6 @@ def _get_values(var, dct):
 
     values = var[:].squeeze()
 
-    fv = var.getncattr("_FillValue")
-    if fv is not None and not np.ma.is_masked(values):
-        values[values == fv] = np.nan
-
     fv2 = dct.get("fillvalue")
     if fv2 is not None and not np.ma.is_masked(values):
         values[values == fv2] = np.nan
