@@ -54,7 +54,7 @@ def _open_one_dataset(fname, variable_dict):
     ds["time"] = (
         ("time",),
         num2pydate(time_var[:].squeeze(), time_units),
-        {"long_name": time_var.long_name, "units": time_var.units},
+        {"long_name": time_var.long_name},
     )
     ds = ds.set_coords(["time", "lon", "lat"])
 
