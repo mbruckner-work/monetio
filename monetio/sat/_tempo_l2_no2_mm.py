@@ -162,9 +162,9 @@ def calculate_pressure(ds):
 
     Returns
     -------
-    layer_pressure: xr.DataArray
+    layer_pressure : xr.DataArray
         Pressure at layer in Pa
-    delta_pressure: xr.DataArray
+    delta_pressure : xr.DataArray
         Difference of pressure in layer
     """
     surf_pressure = ds["surface_pressure"]
