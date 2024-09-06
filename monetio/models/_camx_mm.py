@@ -439,7 +439,7 @@ def _calc_midlayer_height_agl(dset):
         "COL",
     ), "Check dims of z, should be [TSTEP, LAY, ROW, COL]"
 
-    if "z" in list(dset.variables):
+    if "z" in dset.variables:
         height = "z"
     elif "ZGRID_M" in dset.variables:
         height = "ZGRID_M"
