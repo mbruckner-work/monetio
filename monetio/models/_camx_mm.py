@@ -21,6 +21,7 @@ def open_mfdataset(
     fname,
     fname_met_3D=None,
     fname_met_2D=None,
+    landuse_file=None,
     earth_radius=6370000,
     convert_to_ppb=True,
     drop_duplicates=False,
@@ -386,7 +387,7 @@ def add_multiple_lazy(dset, variables, weights=None):
 
     Returns
     -------
-    d: xarray
+    xarray
         including multiple variables
 
     """
@@ -405,7 +406,7 @@ def _calc_midlayer_height_agl(dset):
 
     Parameters
     ----------
-    dset: xarray.Dataset
+    dset : xarray.Dataset
         Should include variables 'z' with dims [TSTEP, LAY, ROW, COL]
         and topo with dims [ROW, COL]
 
@@ -422,23 +423,27 @@ def _calc_midlayer_height_agl(dset):
         "COL",
     ), "Check dims of z, should be [TSTEP, LAY, ROW, COL]"
 
-    mid_layer_height = np.array(dset["z"])  # height in the layer upper interface of each layer
+    if "z" in list(dset.variables):
+        height = "z"
+    elif "ZGRID_M" in dset.variables:
+        height="ZGRID_M"
+    mid_layer_height = np.array(dset[height])  # height in the layer upper interface of each layer
     mid_layer_height[:, 1:, :, :] = (
         mid_layer_height[:, :-1, :, :] + mid_layer_height[:, 1:, :, :]
     ) / 2
     mid_layer_height[0, 0, :, :] = mid_layer_height[0, 0, :, :] / 2
-    alt_agl_m_mid = xr.zeros_like(dset["z"])
+    alt_agl_m_mid = xr.zeros_like(dset[height])
     alt_agl_m_mid[:, :, :, :] = mid_layer_height
     alt_agl_m_mid.attrs["var_desc"] = "Layer height above ground level at midpoint"
     return alt_agl_m_mid
 
 
-def _calc_midlayer_height_msl(dset):
+def _calc_midlayer_height_msl(dset, dset_lu):
     """Calculates the midlayer height
 
     Parameters
     ----------
-    dset: xarray.Dataset
+    dset : xarray.Dataset
         Should include variables 'z' with dims [TSTEP, LAY, ROW, COL]
         and topo with dims [ROW, COL]
 
