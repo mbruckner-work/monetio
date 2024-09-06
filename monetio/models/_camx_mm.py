@@ -449,6 +449,8 @@ def _calc_midlayer_height_agl(dset):
         height = "z"
     elif "ZGRID_M" in dset.variables:
         height = "ZGRID_M"
+    else:
+        raise "No height variable found, but _calc_midlayer_height_agl was called."
     mid_layer_height = np.array(
         dset[height]
     )  # height in the layer upper interface of each layer
