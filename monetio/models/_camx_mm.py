@@ -68,6 +68,8 @@ def open_mfdataset(
                 dset = add_met_data_3D(dset, dset_met)
             if "alt_agl_m_mid" in list(dset.variables):
                 var_list = var_list + ["alt_agl_m_mid"]
+            if "layer_height" in list(dset.variables):
+                var_list = var_list + ["layer_height"]
             if "pres_pa_mid" in list(dset.variables):
                 var_list = var_list + ["pres_pa_mid"]
         else:
