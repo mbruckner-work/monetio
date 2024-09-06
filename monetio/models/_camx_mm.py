@@ -403,7 +403,7 @@ def add_multiple_lazy(dset, variables, weights=None):
 
     Returns
     -------
-    xarray
+    xarray.Dataset
         including multiple variables
 
     """
