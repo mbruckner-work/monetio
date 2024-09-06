@@ -66,18 +66,20 @@ def open_mfdataset(
             file_keywords = _choose_xarray_engine_and_keywords(fname_met_3D)
             with xr.open_mfdataset(**file_keywords) as dset_met:
                 dset = add_met_data_3D(dset, dset_met)
-            if "alt_agl_m_mid" in list(dset.variables):
+            if "alt_agl_m_mid" in dset.variables:
                 var_list = var_list + ["alt_agl_m_mid"]
-            if "layer_height" in list(dset.variables):
+            if "layer_height" in dset.variables:
                 var_list = var_list + ["layer_height"]
-            if "pres_pa_mid" in list(dset.variables):
+            if "pres_pa_mid" in dset.variables:
                 var_list = var_list + ["pres_pa_mid"]
         else:
-            warnings.warn("Filename for meteorological input not provided. Adding only altitude.")
-        if (landuse_file is not None) and ("alt_agl_m_mid" in list(dset.variables)):
+            warnings.warn(
+                "Filename for meteorological input not provided. Adding only altitude."
+            )
+        if (landuse_file is not None) and ("alt_agl_m_mid" in dset.variables):
             file_keywords = _choose_xarray_engine_and_keywords(landuse_file)
             with xr.open_dataset(**file_keywords) as dset_lu:
-                if ("topo" in list(dset_lu.variables)) or ("TOPO_M" in list(dset_lu.variables)):
+                if ("topo" in dset_lu.variables) or ("TOPO_M" in dset_lu.variables):
                     dset["alt_msl_m_mid"] = _calc_midlayer_height_msl(dset, dset_lu)
 
     # get the grid information
@@ -190,20 +192,22 @@ def add_met_data_3D(d_chem, d_met):
 
     # d_met has a final TSTEP not present in d_chem
     d_met = d_met.isel(TSTEP=slice(0, len(d_met.TSTEP) - 1))
-    if "pressure" in list(d_met.variables):
+    if "pressure" in d_met.variables:
         d_chem["pres_pa_mid"] = d_met["PRESS_MB"] * 100
-    elif "PRESS_MB" in list(d_met.variables):
+    elif "PRESS_MB" in d_met.variables:
         d_chem["pres_pa_mid"] = d_met["PRESS_MB"] * 100
     else:
         warnings.warn("No pressure variable found. PRESS_MB and pressure were tested.")
-    if "press_pa_mid" in list(d_chem.variables):
+    if "press_pa_mid" in d_chem.variables:
         d_chem["pres_pa_mid"].attrs = {
             "units": "Pa",
             "long_name": "pressure",
             "var_desc": "pressure",
         }
-    if ("z" in list(d_met.variables)) or ("ZGRID_M" in list(d_met.variables)):
-        d_chem["alt_agl_m_mid"], d_chem["layer_height"] = _calc_midlayer_height_agl(d_met)
+    if ("z" in d_met.variables) or ("ZGRID_M" in d_met.variables):
+        d_chem["alt_agl_m_mid"], d_chem["layer_height"] = _calc_midlayer_height_agl(
+            d_met
+        )
     else:
         warnings.warn("No altitude AGL was found.")
     if "temperature" in list(d_met.variabled):
@@ -341,7 +345,9 @@ def add_lazy_clf(d):
         newkeys = allvars.loc[index]
         neww = weights.loc[index]
         d["CLf"] = add_multiple_lazy(d, newkeys, weights=neww)
-        d["CLf"] = d["CLf"].assign_attrs({"name": "CLf", "long_name": "Fine Mode particulate Cl"})
+        d["CLf"] = d["CLf"].assign_attrs(
+            {"name": "CLf", "long_name": "Fine Mode particulate Cl"}
+        )
     return d
 
 
@@ -443,7 +449,9 @@ def _calc_midlayer_height_agl(dset):
         height = "z"
     elif "ZGRID_M" in dset.variables:
         height = "ZGRID_M"
-    mid_layer_height = np.array(dset[height])  # height in the layer upper interface of each layer
+    mid_layer_height = np.array(
+        dset[height]
+    )  # height in the layer upper interface of each layer
     layer_height = dset[height]
     mid_layer_height[:, 1:, :, :] = (
         mid_layer_height[:, :-1, :, :] + mid_layer_height[:, 1:, :, :]
@@ -480,7 +488,9 @@ def _calc_midlayer_height_msl(dset, dset_lu):
         topo = "topo"
     else:
         topo = "TOPO_M"
-    alt_msl_m_mid = dset["alt_agl_m_mid"] + np.tile(dset[topo].values, (ntsteps, nlayers, 1, 1))
+    alt_msl_m_mid = dset["alt_agl_m_mid"] + np.tile(
+        dset[topo].values, (ntsteps, nlayers, 1, 1)
+    )
     alt_msl_m_mid.attrs = alt_agl_m_mid.attrs
     alt_msl_m_mid.attrs["var_desc"] = "Layer height above sea level"
     return alt_msl_m_mid
