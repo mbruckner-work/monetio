@@ -181,12 +181,18 @@ def add_met_data_3D(d_chem, d_met):
 
     # d_met has a final TSTEP not present in d_chem
     d_met = d_met.isel(TSTEP=slice(0, len(d_met.TSTEP) - 1))
-    d_chem["pres_pa_mid"] = d_met["PRESS_MB"] * 1000
-    d_chem["pres_pa_mid"].attrs = {
-        "units": "Pa",
-        "long_name": "pressure",
-        "var_desc": "pressure",
-    }
+    if "pressure" in list(d_met.variables):
+        d_chem["pres_pa_mid"] = d_met["PRESS_MB"] * 100
+    elif "PRESS_MB" in list(d_met.variables):
+        d_chem["pres_pa_mid"] = d_met["PRESS_MB"] * 100
+    else:
+        warnings.warn("No pressure variable found. PRESS_MB and pressure were tested.")
+    if "press_pa_mid" in list(d_chem.variables):
+        d_chem["pres_pa_mid"].attrs = {
+            "units": "Pa",
+            "long_name": "pressure",
+            "var_desc": "pressure",
+        }
     d_chem["temperature_k"] = d_met["temperature_k"]
     return d_chem
 
