@@ -479,7 +479,7 @@ def _calc_midlayer_height_msl(dset, dset_lu):
     if "alt_agl_m_mid" in dset.keys():
         alt_agl_m_mid = dset["alt_agl_m_mid"]
     else:
-        alt_agl_m_mid = _calc_midlayer_height_agl(dset)
+        alt_agl_m_mid, _ = _calc_midlayer_height_agl(dset)
     if "topo" in dset_lu:
         topo = "topo"
     else:
