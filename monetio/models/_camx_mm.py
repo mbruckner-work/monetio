@@ -75,7 +75,9 @@ def open_mfdataset(
             if "temperature_k" in dset.variables:
                 var_list = var_list + ["temperature_k"]
         else:
-            warnings.warn("Filename for meteorological input not provided. Adding only altitude.")
+            warnings.warn(
+                "Filename for meteorological input not provided. Adding only altitude."
+            )
         if (landuse_file is not None) and ("alt_agl_m_mid" in dset.variables):
             file_keywords = _choose_xarray_engine_and_keywords(landuse_file)
             with xr.open_dataset(**file_keywords) as dset_lu:
@@ -206,7 +208,9 @@ def add_met_data_3D(d_chem, d_met):
             "var_desc": "pressure",
         }
     if ("z" in d_met.variables) or ("ZGRID_M" in d_met.variables):
-        d_chem["alt_agl_m_mid"], d_chem["layer_height_agl"] = _calc_midlayer_height_agl(d_met)
+        d_chem["alt_agl_m_mid"], d_chem["layer_height_agl"] = _calc_midlayer_height_agl(
+            d_met
+        )
     else:
         warnings.warn("No altitude AGL was found.")
 
@@ -215,7 +219,9 @@ def add_met_data_3D(d_chem, d_met):
     elif "TEMP_K" in d_met.variables:
         d_chem["temperature_k"] = d_met["TEMP_K"]
     else:
-        warnings.warn("No temperature variable found. TEMP_K and temperature were tested.")
+        warnings.warn(
+            "No temperature variable found. TEMP_K and temperature were tested."
+        )
     if "temperature_k" in d_chem.variables:
         d_chem["temperature_k"].attrs["var_desc"] = "Temperature of layer in K."
 
@@ -349,7 +355,9 @@ def add_lazy_clf(d):
         newkeys = allvars.loc[index]
         neww = weights.loc[index]
         d["CLf"] = add_multiple_lazy(d, newkeys, weights=neww)
-        d["CLf"] = d["CLf"].assign_attrs({"name": "CLf", "long_name": "Fine Mode particulate Cl"})
+        d["CLf"] = d["CLf"].assign_attrs(
+            {"name": "CLf", "long_name": "Fine Mode particulate Cl"}
+        )
     return d
 
 
@@ -440,16 +448,17 @@ def _calc_midlayer_height_agl(dset):
         DataArray with the midlayer height above ground level
     """
 
-
     if "z" in dset.variables:
         height = "z"
     elif "ZGRID_M" in dset.variables:
         height = "ZGRID_M"
     else:
         raise "No height variable found, but _calc_midlayer_height_agl was called."
-    mid_layer_height = np.array(dset[height])  # height in the layer upper interface of each layer
+    mid_layer_height = np.array(
+        dset[height]
+    )  # height in the layer upper interface of each layer
     layer_height_agl = dset[height]
-    layer_height_agl.attrs["long_name"] = "layer_height_agl"
+    layer_height_agl.attrs["long_name"] = "Height AGL at top"
     layer_height_agl.attrs["var_desc"] = "Layer height above ground level at top"
     mid_layer_height[:, 1:, :, :] = (
         mid_layer_height[:, :-1, :, :] + mid_layer_height[:, 1:, :, :]
@@ -458,7 +467,7 @@ def _calc_midlayer_height_agl(dset):
     alt_agl_m_mid = xr.zeros_like(dset[height])
     alt_agl_m_mid[:, :, :, :] = mid_layer_height
     alt_agl_m_mid.attrs["var_desc"] = "Layer height above ground level at midpoint"
-    alt_agl_m_mid.attrs["long_name"] = "alt_agl_m_mid"
+    alt_agl_m_mid.attrs["long_name"] = "Height AGL at midpoint"
     return alt_agl_m_mid, layer_height_agl
 
 
@@ -482,12 +491,14 @@ def _calc_midlayer_height_msl(dset, dset_lu):
     if "alt_agl_m_mid" in dset.keys():
         alt_agl_m_mid = dset["alt_agl_m_mid"]
     else:
-        alt_agl_m_mid = _calc_midlayer_height_agl(dset)
+        alt_agl_m_mid, _ = _calc_midlayer_height_agl(dset)
     if "topo" in dset_lu:
         topo = "topo"
     else:
         topo = "TOPO_M"
-    alt_msl_m_mid = dset["alt_agl_m_mid"] + np.tile(dset[topo].values, (ntsteps, nlayers, 1, 1))
+    alt_msl_m_mid = dset["alt_agl_m_mid"] + np.tile(
+        dset[topo].values, (ntsteps, nlayers, 1, 1)
+    )
     alt_msl_m_mid.attrs = alt_agl_m_mid.attrs
     alt_msl_m_mid.attrs["var_desc"] = "Layer height above sea level"
     return alt_msl_m_mid
