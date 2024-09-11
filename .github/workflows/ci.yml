@@ -10,7 +10,7 @@ on:
     - cron: "0 12 * * 1"
 
 env:
-  OPENAQ_API_KEY: ${{ secrets.OPENAQ_API_KEY }}
+  OPENAQ_API_KEY: "${{ secrets.OPENAQ_API_KEY }}"
 
 jobs:
   test:
