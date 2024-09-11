@@ -21,6 +21,7 @@ def open_mfdataset(
     fname,
     fname_met_3D=None,
     fname_met_2D=None,
+    landuse_file=None,
     earth_radius=6370000,
     convert_to_ppb=True,
     drop_duplicates=False,
@@ -61,15 +62,23 @@ def open_mfdataset(
         dset = dset.isel(LAY=[0])
 
     if not surf_only:
-        dset["alt_agl_m_mid"] = _calc_midlayer_height_agl(dset)
-        dset["alt_msl_m_mid"] = _calc_midlayer_height_msl(dset)
-        var_list = var_list + ["alt_agl_m_mid", "alt_msl_m_mid"]
         if fname_met_3D is not None:
             file_keywords = _choose_xarray_engine_and_keywords(fname_met_3D)
             with xr.open_mfdataset(**file_keywords) as dset_met:
                 dset = add_met_data_3D(dset, dset_met)
+            if "alt_agl_m_mid" in dset.variables:
+                var_list = var_list + ["alt_agl_m_mid"]
+            if "layer_height" in dset.variables:
+                var_list = var_list + ["layer_height"]
+            if "pres_pa_mid" in dset.variables:
+                var_list = var_list + ["pres_pa_mid"]
         else:
             warnings.warn("Filename for meteorological input not provided. Adding only altitude.")
+        if (landuse_file is not None) and ("alt_agl_m_mid" in dset.variables):
+            file_keywords = _choose_xarray_engine_and_keywords(landuse_file)
+            with xr.open_dataset(**file_keywords) as dset_lu:
+                if ("topo" in dset_lu.variables) or ("TOPO_M" in dset_lu.variables):
+                    dset["alt_msl_m_mid"] = _calc_midlayer_height_msl(dset, dset_lu)
 
     # get the grid information
     grid = grid_from_dataset(dset, earth_radius=earth_radius)
@@ -181,13 +190,29 @@ def add_met_data_3D(d_chem, d_met):
 
     # d_met has a final TSTEP not present in d_chem
     d_met = d_met.isel(TSTEP=slice(0, len(d_met.TSTEP) - 1))
-    d_chem["pres_pa_mid"] = d_met["PRESS_MB"] * 1000
-    d_chem["pres_pa_mid"].attrs = {
-        "units": "Pa",
-        "long_name": "pressure",
-        "var_desc": "pressure",
-    }
-    d_chem["temperature_k"] = d_met["temperature_k"]
+    if "pressure" in d_met.variables:
+        d_chem["pres_pa_mid"] = d_met["PRESS_MB"] * 100
+    elif "PRESS_MB" in d_met.variables:
+        d_chem["pres_pa_mid"] = d_met["PRESS_MB"] * 100
+    else:
+        warnings.warn("No pressure variable found. PRESS_MB and pressure were tested.")
+    if "press_pa_mid" in d_chem.variables:
+        d_chem["pres_pa_mid"].attrs = {
+            "units": "Pa",
+            "long_name": "pressure",
+            "var_desc": "pressure",
+        }
+    if ("z" in d_met.variables) or ("ZGRID_M" in d_met.variables):
+        d_chem["alt_agl_m_mid"], d_chem["layer_height"] = _calc_midlayer_height_agl(d_met)
+    else:
+        warnings.warn("No altitude AGL was found.")
+    if "temperature" in list(d_met.variabled):
+        d_chem["temperature_k"] = d_met["temperature"]
+    elif "TEMP_K" in list(d_met.variables):
+        d_chem["temperature_k"] = d_met["TEMP_K"]
+    else:
+        warnings.warn("No temperature variable found. TEMP_K and temperature were tested.")
+
     return d_chem
 
 
@@ -380,7 +405,7 @@ def add_multiple_lazy(dset, variables, weights=None):
 
     Returns
     -------
-    d: xarray
+    xarray.Dataset
         including multiple variables
 
     """
@@ -399,7 +424,7 @@ def _calc_midlayer_height_agl(dset):
 
     Parameters
     ----------
-    dset: xarray.Dataset
+    dset : xarray.Dataset
         Should include variables 'z' with dims [TSTEP, LAY, ROW, COL]
         and topo with dims [ROW, COL]
 
@@ -416,23 +441,30 @@ def _calc_midlayer_height_agl(dset):
         "COL",
     ), "Check dims of z, should be [TSTEP, LAY, ROW, COL]"
 
-    mid_layer_height = np.array(dset["z"])  # height in the layer upper interface of each layer
+    if "z" in dset.variables:
+        height = "z"
+    elif "ZGRID_M" in dset.variables:
+        height = "ZGRID_M"
+    else:
+        raise "No height variable found, but _calc_midlayer_height_agl was called."
+    mid_layer_height = np.array(dset[height])  # height in the layer upper interface of each layer
+    layer_height = dset[height]
     mid_layer_height[:, 1:, :, :] = (
         mid_layer_height[:, :-1, :, :] + mid_layer_height[:, 1:, :, :]
     ) / 2
     mid_layer_height[0, 0, :, :] = mid_layer_height[0, 0, :, :] / 2
-    alt_agl_m_mid = xr.zeros_like(dset["z"])
+    alt_agl_m_mid = xr.zeros_like(dset[height])
     alt_agl_m_mid[:, :, :, :] = mid_layer_height
     alt_agl_m_mid.attrs["var_desc"] = "Layer height above ground level at midpoint"
-    return alt_agl_m_mid
+    return alt_agl_m_mid, layer_height
 
 
-def _calc_midlayer_height_msl(dset):
+def _calc_midlayer_height_msl(dset, dset_lu):
     """Calculates the midlayer height
 
     Parameters
     ----------
-    dset: xarray.Dataset
+    dset : xarray.Dataset
         Should include variables 'z' with dims [TSTEP, LAY, ROW, COL]
         and topo with dims [ROW, COL]
 
@@ -447,8 +479,12 @@ def _calc_midlayer_height_msl(dset):
     if "alt_agl_m_mid" in dset.keys():
         alt_agl_m_mid = dset["alt_agl_m_mid"]
     else:
-        alt_agl_m_mid = _calc_midlayer_height_agl(dset)
-    alt_msl_m_mid = dset["alt_agl_m_mid"] + np.tile(dset["topo"].values, (ntsteps, nlayers, 1, 1))
+        alt_agl_m_mid, _ = _calc_midlayer_height_agl(dset)
+    if "topo" in dset_lu:
+        topo = "topo"
+    else:
+        topo = "TOPO_M"
+    alt_msl_m_mid = dset["alt_agl_m_mid"] + np.tile(dset[topo].values, (ntsteps, nlayers, 1, 1))
     alt_msl_m_mid.attrs = alt_agl_m_mid.attrs
     alt_msl_m_mid.attrs["var_desc"] = "Layer height above sea level"
     return alt_msl_m_mid
