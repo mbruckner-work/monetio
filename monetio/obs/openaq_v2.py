@@ -1,6 +1,7 @@
 """Get AQ data from the OpenAQ v2 REST API.
 
 https://openaq.org/
+
 https://api.openaq.org/docs#/v2
 """
 import functools
@@ -279,9 +280,6 @@ def add_data(
 ):
     """Get OpenAQ API v2 data, including low-cost sensors.
 
-    kwargs are passed to :func:`_consume`,
-    though currently ``params`` can't be one of them.
-
     Parameters
     ----------
     dates : datetime-like or array-like of datetime-like
@@ -325,6 +323,13 @@ def add_data(
         and an air density of 1.2 kg/m³.
         Use ``wide_fmt=False`` if you want to do the conversion yourself.
         In some cases, the conversion to wide format also reduces the amount of data returned.
+    retry : int, default: 5
+        Number of times to retry an API request if it times out.
+    timeout : float, default: 10
+        Seconds to wait for the server before giving up, for a single request.
+    threads : int, optional
+        Number of threads to use for fetching data.
+        Default: no multi-threading.
     """
 
     dates = pd.to_datetime(dates)
