@@ -538,21 +538,22 @@ def add_data(
             p_units_non_unique = p_units[~unique]
             warnings.warn(f"inconsistent units among parameters:\n{p_units_non_unique}")
 
-        # Location name should be unique for given site (location) ID
-        site_names = df.groupby("siteid").location.unique()
-        unique = site_names.apply(len).eq(1)
-        if not unique.all():
-            site_names_non_unique = site_names[~unique]
-            warnings.warn(
-                f"non-unique location names among site IDs:\n{site_names_non_unique}"
-                "\nUsing first."
-            )
-            df = df.drop(columns=["location"]).merge(
-                site_names.str.get(0),
-                left_on="siteid",
-                right_index=True,
-                how="left",
-            )
+        # Certain metadata should be unique for a given site but sometimes aren't
+        # (e.g. location names of different specificity, slight differences in lat/lon coords)
+        for col in ["location", "latitude", "longitude"]:
+            site_col = df.groupby("siteid")[col].unique()
+            unique = site_col.apply(len).eq(1)
+            if not unique.all():
+                site_col_non_unique = site_col[~unique]
+                warnings.warn(
+                    f"non-unique {col!r} among site IDs:\n{site_col_non_unique}" "\nUsing first."
+                )
+                df = df.drop(columns=[col]).merge(
+                    site_col.str.get(0),
+                    left_on="siteid",
+                    right_index=True,
+                    how="left",
+                )
 
         # Pivot
         index = [
