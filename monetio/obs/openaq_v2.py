@@ -574,7 +574,7 @@ def add_data(
         ]
         dupes = df[df.duplicated(keep=False)]
         if not dupes.empty:
-            logging.info(f"found {dupes.sum()} duplicated rows")
+            logging.info(f"found {len(dupes)} duplicated rows")
         for col in index:
             if df[col].isnull().all():
                 index.remove(col)
