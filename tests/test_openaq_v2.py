@@ -1,12 +1,16 @@
-import sys
+import os
 
 import pandas as pd
 import pytest
 
 import monetio.obs.openaq_v2 as openaq
 
-if sys.version_info < (3, 7):
-    pytest.skip("asdf", allow_module_level=True)
+if (
+    os.environ.get("CI", "false").lower() not in {"false", "0"}
+    and os.environ.get("OPENAQ_API_KEY", "") == ""
+):
+    # PRs from forks don't get the secret
+    pytest.skip("no API key", allow_module_level=True)
 
 LATLON_NCWCP = 38.9721, -76.9248
 SITES_NEAR_NCWCP = [
