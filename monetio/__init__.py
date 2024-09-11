@@ -1,6 +1,19 @@
 from . import grids
 from .models import camx, cmaq, fv3chem, hysplit, hytraj, ncep_grib, pardump, prepchem, raqms
-from .obs import aeronet, airnow, aqs, cems, crn, improve, ish, ish_lite, nadp, openaq, pams
+from .obs import (
+    aeronet,
+    airnow,
+    aqs,
+    cems,
+    crn,
+    improve,
+    ish,
+    ish_lite,
+    nadp,
+    openaq,
+    openaq_v2,
+    pams,
+)
 from .profile import geoms, icartt, tolnet
 from .sat import goes
 
@@ -29,6 +42,7 @@ __all__ = [
     "ish_lite",
     "nadp",
     "openaq",
+    "openaq_v2",
     "pams",
     #
     # profile obs
