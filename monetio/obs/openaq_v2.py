@@ -136,7 +136,7 @@ def _consume(endpoint, *, params=None, timeout=10, retry=5, limit=500, npages=No
                 logger.info(f"request timed out (try {tries}/{retry})")
                 time.sleep(tries + 0.1 * rand())
             elif r.status_code == 429:
-                # Note: reponse headers don't seem to include Retry-After
+                # Note: response headers don't seem to include Retry-After
                 logger.info(f"rate limited (try {tries}/{retry})")
                 time.sleep(tries * 5 + 0.2 * rand())
             else:
@@ -285,7 +285,7 @@ def add_data(
     ----------
     dates : datetime-like or array-like of datetime-like
         One desired date/time or
-        an array, of which the min and max wil be used
+        an array, of which the min and max will be used
         as inclusive time bounds of the desired data.
     parameters : str or list of str, optional
         For example, ``'o3'`` or ``['pm25', 'o3']`` (default).
