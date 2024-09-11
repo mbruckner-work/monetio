@@ -1,4 +1,5 @@
 import sys
+from urllib.error import HTTPError
 
 import pandas as pd
 import pytest
@@ -15,11 +16,15 @@ openaq._URL_CAP = 4
 # Browse the archive at https://openaq-fetches.s3.amazonaws.com/index.html
 FIRST_DAY = pd.date_range(start="2013-11-26", end="2013-11-27", freq="H")[:-1]
 
+permission_error = pytest.mark.xfail(reason="private", raises=PermissionError, strict=True)
 
+forbidden_error = pytest.mark.xfail(reason="forbidden", raises=HTTPError, strict=True)  # 403
+
+
+@permission_error
 def test_openaq_first_date():
     dates = FIRST_DAY
     df = openaq.add_data(dates)
-
     assert not df.empty
     assert df.siteid.nunique() == 1
     assert (df.country == "CN").all() and ((df.time_local - df.time) == pd.Timedelta(hours=8)).all()
@@ -33,6 +38,7 @@ def test_openaq_first_date():
     assert df.pm25_ugm3.gt(0).all()
 
 
+@permission_error
 def test_openaq_long_fmt():
     dates = FIRST_DAY
     df = openaq.add_data(dates, wide_fmt=False)
@@ -44,6 +50,7 @@ def test_openaq_long_fmt():
     assert "pm25" in df.parameter.values
 
 
+@forbidden_error
 @pytest.mark.parametrize(
     "url",
     [
@@ -68,6 +75,7 @@ def test_read(url):
     assert df.averagingPeriod.dropna().gt(pd.Timedelta(0)).all()
 
 
+@permission_error
 def test_openaq_2023():
     # Period from Jordan's NRT example (#130)
     # There are many files in this period (~ 100?)

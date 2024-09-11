@@ -14,10 +14,10 @@ from .obs import (
     openaq_v2,
     pams,
 )
-from .profile import geoms, icartt, tolnet
+from .profile import geoms, gml_ozonesonde, icartt, tolnet
 from .sat import goes
 
-__version__ = "0.2.4"
+__version__ = "0.2.6"
 
 __all__ = [
     "__version__",
@@ -47,6 +47,7 @@ __all__ = [
     #
     # profile obs
     "geoms",
+    "gml_ozonesonde",
     "icartt",
     "tolnet",
     #
@@ -59,6 +60,7 @@ __all__ = [
     "fv3chem",
     "hysplit",
     "hytraj",
+    "icap_mme",
     "ncep_grib",
     "pardump",
     "prepchem",

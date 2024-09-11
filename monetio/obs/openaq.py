@@ -8,7 +8,7 @@ import sys
 import warnings
 
 import pandas as pd
-from numpy import NaN
+from numpy import nan
 
 _PY39_PLUS = sys.version_info >= (3, 9)
 
@@ -70,6 +70,7 @@ def read_json(fp_or_url, *, verbose=False):
     # - pd.json_normalize(df["date"])
     # - pd.json_normalize(json.loads(df["date"].to_json(orient="records")))
     #   With this method, can apply to multiple columns at once
+    df = df.dropna(subset=["coordinates"])
     to_expand = ["date", "averagingPeriod", "coordinates"]
     new = pd.json_normalize(json.loads(df[to_expand].to_json(orient="records")))
 
@@ -98,7 +99,7 @@ def read_json(fp_or_url, *, verbose=False):
     value = new["averagingPeriod.value"]
     units = new["averagingPeriod.unit"]
     unique_units = units.dropna().unique()
-    averagingPeriod = pd.Series(np.full(len(new), NaN, dtype="timedelta64[ns]"))
+    averagingPeriod = pd.Series(np.full(len(new), nan, dtype="timedelta64[ns]"))
     for unit in unique_units:
         is_unit = units == unit
         averagingPeriod.loc[is_unit] = pd.to_timedelta(value[is_unit], unit=unit)
@@ -411,7 +412,7 @@ class OPENAQ:
             "umol/mol",
             "µg/m³",
         ]
-        df.loc[df.unit.isin(non_neg_units) & (df.value <= 0), "value"] = NaN
+        df.loc[df.unit.isin(non_neg_units) & (df.value < 0), "value"] = nan
         # Assume value 0 implies below detection limit
 
         if wide_fmt:
