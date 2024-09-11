@@ -1,7 +1,12 @@
+import sys
+
 import pandas as pd
 import pytest
 
 import monetio.obs.openaq_v2 as openaq
+
+if sys.version_info < (3, 7):
+    pytest.skip("asdf", allow_module_level=True)
 
 LATLON_NCWCP = 38.9721, -76.9248
 SITES_NEAR_NCWCP = [
