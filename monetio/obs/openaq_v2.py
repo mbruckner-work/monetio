@@ -17,6 +17,10 @@ import requests
 logger = logging.getLogger(__name__)
 
 API_KEY = os.environ.get("OPENAQ_API_KEY", None)
+if API_KEY is not None:
+    API_KEY = API_KEY.strip()
+    if len(API_KEY) != 64:
+        warnings.warn(f"API key length is {len(API_KEY)}, expected 64")
 
 _PPM_TO_UGM3 = {
     "o3": 1990,
