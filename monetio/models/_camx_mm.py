@@ -440,12 +440,6 @@ def _calc_midlayer_height_agl(dset):
         DataArray with the midlayer height above ground level
     """
 
-    #     assert dset["z"].dims == (
-    #         "TSTEP",
-    #         "LAY",
-    #         "ROW",
-    #         "COL",
-    #     ), "Check dims of z, should be [TSTEP, LAY, ROW, COL]"
 
     if "z" in dset.variables:
         height = "z"
