@@ -73,7 +73,7 @@ def _open_one_dataset(fname, variable_dict):
 
     for varname, dct in variable_dict.items():
         print(f"- {varname}")
-        if dct is None:
+        if dct is None or (isinstance(dct, str) and dct in {"None", "NONE"}):
             dct = {}
 
         if varname == "preslev":
