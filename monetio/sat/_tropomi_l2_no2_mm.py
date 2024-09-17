@@ -9,6 +9,7 @@ https://sentinels.copernicus.eu/web/sentinel/missions/sentinel-5p
 import logging
 import os
 import sys
+import warnings
 from collections import OrderedDict
 from datetime import datetime
 from glob import glob
@@ -195,7 +196,8 @@ def apply_quality_flag(ds):
 
 
 def open_dataset(fnames, variable_dict, debug=False):
-    """
+    """Open one or more TROPOMI L2 NO2 files.
+
     Parameters
     ----------
     fnames : str
@@ -259,3 +261,13 @@ def open_dataset(fnames, variable_dict, debug=False):
             granules[key] = [granule]
 
     return granules
+
+
+def read_trpdataset(*args, **kwargs):
+    """Alias for :func:`open_dataset`."""
+    warnings.warn(
+        "read_trpdataset is an alias for open_dataset and may be removed in the future",
+        FutureWarning,
+        stacklevel=2,
+    )
+    return open_dataset(*args, **kwargs)

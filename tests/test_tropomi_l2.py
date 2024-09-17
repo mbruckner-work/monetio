@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from filelock import FileLock
 
-from monetio.sat._tropomi_l2_no2_mm import open_dataset
+from monetio.sat._tropomi_l2_no2_mm import open_dataset, read_trpdataset
 
 HERE = Path(__file__).parent
 
@@ -62,6 +62,10 @@ def test_open_dataset(test_file_path):
     vn = "nitrogendioxide_tropospheric_column"  # mol m-2
 
     ds = open_dataset(test_file_path, vn)[KEY][0]
+
+    with pytest.warns(FutureWarning, match="read_trpdataset is an alias"):
+        ds_alias = read_trpdataset(test_file_path, vn)[KEY][0]
+    assert ds_alias.identical(ds)
 
     assert set(ds.coords) == {"time", "lat", "lon", "scan_time"}
     assert set(ds) == {vn}
