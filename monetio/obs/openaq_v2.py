@@ -4,6 +4,7 @@ https://openaq.org/
 
 https://api.openaq.org/docs#/v2
 """
+
 import functools
 import json
 import logging

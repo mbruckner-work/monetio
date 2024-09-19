@@ -3,6 +3,7 @@
 https://openaq.org/
 https://openaq-fetches.s3.amazonaws.com/index.html
 """
+
 import json
 import sys
 import warnings
