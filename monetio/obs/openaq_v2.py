@@ -1,5 +1,14 @@
 """Get AQ data from the OpenAQ v2 REST API.
 
+Visit https://docs.openaq.org/docs/getting-started to get an API key
+and set environment variable ``OPENAQ_API_KEY`` to use it.
+
+For example, in Bash:
+
+.. code-block:: bash
+
+   export OPENAQ_API_KEY="your_api_key_here"
+
 https://openaq.org/
 
 https://api.openaq.org/docs#/v2
@@ -60,8 +69,8 @@ def _api_key_warning(func):
     def wrapper(*args, **kwargs):
         if API_KEY is None:
             warnings.warn(
-                "Non-cached requests to the OpenAQ v2 web API will be slow without an API key, "
-                "or might fail (HTTP error 401). "
+                "Non-cached requests to the OpenAQ v2 web API will be slow without an API key "
+                "or requests will fail (HTTP error 401). "
                 "Obtain one (https://docs.openaq.org/docs/getting-started#api-key) "
                 "and set your OPENAQ_API_KEY environment variable.",
                 stacklevel=2,
