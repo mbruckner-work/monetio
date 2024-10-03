@@ -29,18 +29,23 @@ def read_OMPS_nm(files):
         if isinstance(files,str):
             filelist = sorted(glob(files, recursive=False))
         else: 
-            filelist = files # assume list
+            filelist = sorted(files) # assume list
         for filename in filelist:
             try:
                 data = extract_OMPS_nm(filename)
-
+                #print(data.dims)
                 if count == 0:
                     data_array = data
                     count += 1
                 else:
                     data_array = xr.concat([data_array, data], "x")
-            except KeyError:
+            except KeyError as e:
                 print(f'KeyError occured for: {filename}')
+                print(e)
+            except ValueError as e:
+                print(f'ValueError occured for: {filename}')
+                print(e)
+            #print(data_array.dims)
     return data_array
 
 
@@ -158,4 +163,5 @@ def extract_OMPS_nm(fname):
         },
         attrs={"missing_value": -999},
     )
+    print(ds['time'][0],ds.dims)
     return ds
