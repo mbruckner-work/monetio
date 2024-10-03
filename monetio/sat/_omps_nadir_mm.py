@@ -13,7 +13,7 @@ def read_OMPS_nm(files):
     import xarray as xr
 
     count = 0
-    print(files)
+    #print(files)
     # Check if files are url
     if "https" in files[0]:
         filelist = sorted(files)
@@ -26,17 +26,21 @@ def read_OMPS_nm(files):
             else:
                 data_array = xr.concat([data_array, data], "x")
     else:
-        filelist = sorted(glob(files, recursive=False))
-
+        if isinstance(files,str):
+            filelist = sorted(glob(files, recursive=False))
+        else: 
+            filelist = files # assume list
         for filename in filelist:
-            data = extract_OMPS_nm(filename)
+            try:
+                data = extract_OMPS_nm(filename)
 
-            if count == 0:
-                data_array = data
-                count += 1
-            else:
-                data_array = xr.concat([data_array, data], "x")
-
+                if count == 0:
+                    data_array = data
+                    count += 1
+                else:
+                    data_array = xr.concat([data_array, data], "x")
+            except KeyError:
+                print(f'KeyError occured for: {filename}')
     return data_array
 
 
