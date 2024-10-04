@@ -36,12 +36,8 @@ def read_OMPS_nm(files):
                     count += 1
                 else:
                     data_array = xr.concat([data_array, data], "x")
-            except KeyError as e:
-                print(f'KeyError occured for: {filename}')
-                print(e)
-            except ValueError as e:
-                print(f'ValueError occured for: {filename}')
-                print(e)
+            except (KeyError, ValueError) as e:
+                print(f"warning: skipping {filename}. {type(e).__name__} occured: {e}")
     return data_array
 
 
