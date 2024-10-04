@@ -19,7 +19,6 @@ def read_OMPS_nm(files):
         filelist = sorted(files)
         for filename in filelist:
             data = extract_OMPS_nm_opendap(filename)
-            # print(data)
             if count == 0:
                 data_array = data
                 count += 1
@@ -33,7 +32,6 @@ def read_OMPS_nm(files):
         for filename in filelist:
             try:
                 data = extract_OMPS_nm(filename)
-                #print(data.dims)
                 if count == 0:
                     data_array = data
                     count += 1
@@ -45,7 +43,6 @@ def read_OMPS_nm(files):
             except ValueError as e:
                 print(f'ValueError occured for: {filename}')
                 print(e)
-            #print(data_array.dims)
     return data_array
 
 
@@ -163,5 +160,4 @@ def extract_OMPS_nm(fname):
         },
         attrs={"missing_value": -999},
     )
-    print(ds['time'][0],ds.dims)
     return ds
