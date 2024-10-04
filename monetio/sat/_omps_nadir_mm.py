@@ -13,7 +13,6 @@ def read_OMPS_nm(files):
     import xarray as xr
 
     count = 0
-    #print(files)
     # Check if files are url
     if "https" in files[0]:
         filelist = sorted(files)
