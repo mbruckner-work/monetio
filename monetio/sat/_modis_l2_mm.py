@@ -54,12 +54,12 @@ def read_dataset(fname, variable_dict):
 
     ds = ds.assign_coords(
         {
-            'lon': (['dim_0', 'dim_1'], longitude),
-             'lat': (['dim_0', 'dim_1'], latitude),
-             'time': (['dim_0', 'dim_1'], start_time),
-         }
-     )
-    ds = ds.rename_dims({'dim_0': 'Cell_Along_Swath', 'dim_1': 'Cell_Across_Swath'})
+            "lon": (["dim_0", "dim_1"], longitude),
+            "lat": (["dim_0", "dim_1"], latitude),
+            "time": (["dim_0", "dim_1"], start_time),
+        }
+    )
+    ds = ds.rename_dims({"dim_0": "Cell_Along_Swath", "dim_1": "Cell_Across_Swath"})
 
     return ds
 
