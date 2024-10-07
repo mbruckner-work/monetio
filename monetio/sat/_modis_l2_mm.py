@@ -37,7 +37,7 @@ def read_dataset(fname, variable_dict):
     for varname in variable_dict:
         print(varname)
         values = hdf_read(f, varname)
-        print('min, max: ', values.min(), ' ', values.max())
+        print("min, max: ", values.min(), " ", values.max())
         if "scale" in variable_dict[varname]:
             values = variable_dict[varname]["scale"] * values
         if "minimum" in variable_dict[varname]:
