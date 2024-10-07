@@ -52,8 +52,12 @@ def read_dataset(fname, variable_dict):
             ds.attrs["quality_thresh"] = variable_dict[varname]["quality_flag"]
     hdf_close(f)
 
-    ds = ds.assign_coords({'lon': (['dim_0', 'dim_1'], longitude),
-                           'lat': (['dim_0', 'dim_1'], latitude)})
+    ds = ds.assign_coords(
+        {
+            'lon': (['dim_0', 'dim_1'], longitude),
+             'lat': (['dim_0', 'dim_1'], latitude),
+         }
+     )
     ds = ds.rename_dims({'dim_0': 'Cell_Along_Swath', 'dim_1': 'Cell_Across_Swath'})
 
     return ds
