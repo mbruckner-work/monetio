@@ -23,12 +23,12 @@ def read_OMPS_nm(files):
                 count += 1
             else:
                 data_array = xr.concat([data_array, data], "x")
-    else: # using local files
-        if isinstance(files,str): # expansion of filestring to list
+    else:  # using local files
+        if isinstance(files, str):  # expansion of filestring to list
             filelist = sorted(glob(files, recursive=False))
-        else: # ensure provided filelist is sorted
-            filelist = sorted(files) # assume list
-        for filename in filelist: #extract data
+        else:  # ensure provided filelist is sorted
+            filelist = sorted(files)  # assume list
+        for filename in filelist:  # extract data
             try:
                 data = extract_OMPS_nm(filename)
                 if count == 0:
