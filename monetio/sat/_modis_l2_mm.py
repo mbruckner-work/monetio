@@ -2,6 +2,7 @@ import logging
 import sys
 from collections import OrderedDict
 from glob import glob
+from datetime import datetime, timezone
 
 import numpy as np
 import xarray as xr
@@ -10,15 +11,17 @@ import xarray as xr
 def read_dataset(fname, variable_dict):
     """
     Parameters
-    ----------
+    __________
     fname : str
         Input file path.
 
     Returns
-    -------
+    _______
     xarray.Dataset
     """
     from monetio.sat.hdfio import hdf_close, hdf_list, hdf_open, hdf_read
+
+    epoch_1993 = int(datetime(1993, 1, 1, tzinfo=timezone.utc).timestamp())
 
     print("reading " + fname)
 
@@ -26,12 +29,15 @@ def read_dataset(fname, variable_dict):
 
     f = hdf_open(fname)
     hdf_list(f)
-    latitude = hdf_read(f, "Latitude")  # noqa: F841
-    longitude = hdf_read(f, "Longitude")  # noqa: F841
-    start_time = hdf_read(f, "Scan_Start_Time")  # noqa: F841
+    # Geolocation and Time Parameters
+    latitude = hdf_read(f, "Latitude")
+    longitude = hdf_read(f, "Longitude")
+    start_time = hdf_read(f, "Scan_Start_Time") \
+        + epoch_1993 # convert seconds since 1993 to since 1970
     for varname in variable_dict:
         print(varname)
         values = hdf_read(f, varname)
+        print('min, max: ', values.min(), ' ', values.max())
         if "scale" in variable_dict[varname]:
             values = variable_dict[varname]["scale"] * values
         if "minimum" in variable_dict[varname]:
@@ -46,13 +52,17 @@ def read_dataset(fname, variable_dict):
             ds.attrs["quality_thresh"] = variable_dict[varname]["quality_flag"]
     hdf_close(f)
 
+    ds = ds.assign_coords({'lon': (['dim_0', 'dim_1'], longitude),
+                           'lat': (['dim_0', 'dim_1'], latitude)})
+    ds = ds.rename_dims({'dim_0': 'Cell_Along_Swath', 'dim_1': 'Cell_Across_Swath'})
+
     return ds
 
 
 def apply_quality_flag(ds):
     """
     Parameters
-    ----------
+    __________
     ds : xarray.Dataset
     """
     if "quality_flag" in ds.attrs:
@@ -69,19 +79,24 @@ def apply_quality_flag(ds):
 def read_mfdataset(fnames, variable_dict, debug=False):
     """
     Parameters
-    ----------
+    __________
     fnames : str
         Regular expression for input file paths.
 
     Returns
-    -------
+    _______
     xarray.Dataset
     """
     if debug:
         logging_level = logging.DEBUG
-        logging.basicConfig(stream=sys.stdout, level=logging_level)
+    else:
+        logging_level = logging.INFO
+    logging.basicConfig(stream=sys.stdout, level=logging_level)
 
-    files = sorted(glob(fnames))
+    if isinstance(fnames, list):
+        files = fnames
+    else:
+        files = sorted(glob(fnames))
 
     granules = OrderedDict()
 
