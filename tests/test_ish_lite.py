@@ -7,7 +7,6 @@ try:
     import requests
 
     r = requests.head("https://www1.ncdc.noaa.gov/pub/data/noaa/isd-lite/")
-    r.raise_for_status()
 except Exception:
     pytest.skip("NCEI server issues", allow_module_level=True)
 
