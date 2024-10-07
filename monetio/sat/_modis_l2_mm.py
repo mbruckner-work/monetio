@@ -90,8 +90,6 @@ def read_mfdataset(fnames, variable_dict, debug=False):
     if debug:
         logging_level = logging.DEBUG
         logging.basicConfig(stream=sys.stdout, level=logging_level)
-    else:
-        logging_level = logging.INFO
 
     if isinstance(fnames, list):
         files = fnames
