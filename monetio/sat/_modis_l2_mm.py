@@ -91,10 +91,10 @@ def read_mfdataset(fnames, variable_dict, debug=False):
         logging_level = logging.DEBUG
         logging.basicConfig(stream=sys.stdout, level=logging_level)
 
-    if isinstance(fnames, list):
-        files = fnames
-    else:
+    if isinstance(fnames, str):
         files = sorted(glob(fnames))
+    else:
+        files = fnames
 
     granules = OrderedDict()
 
