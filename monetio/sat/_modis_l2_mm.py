@@ -1,8 +1,8 @@
 import logging
 import sys
 from collections import OrderedDict
-from glob import glob
 from datetime import datetime, timezone
+from glob import glob
 
 import numpy as np
 import xarray as xr
