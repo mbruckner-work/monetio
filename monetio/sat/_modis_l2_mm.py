@@ -32,8 +32,8 @@ def read_dataset(fname, variable_dict):
     # Geolocation and Time Parameters
     latitude = hdf_read(f, "Latitude")
     longitude = hdf_read(f, "Longitude")
-    start_time = hdf_read(f, "Scan_Start_Time") \
-        + epoch_1993 # convert seconds since 1993 to since 1970
+    # convert seconds since 1993 to since 1970
+    start_time = hdf_read(f, "Scan_Start_Time") + epoch_1993
     for varname in variable_dict:
         print(varname)
         values = hdf_read(f, varname)
