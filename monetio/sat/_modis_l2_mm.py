@@ -11,12 +11,12 @@ import xarray as xr
 def read_dataset(fname, variable_dict):
     """
     Parameters
-    __________
+    ----------
     fname : str
         Input file path.
 
     Returns
-    _______
+    -------
     xarray.Dataset
     """
     from monetio.sat.hdfio import hdf_close, hdf_list, hdf_open, hdf_read
@@ -62,7 +62,7 @@ def read_dataset(fname, variable_dict):
 def apply_quality_flag(ds):
     """
     Parameters
-    __________
+    ----------
     ds : xarray.Dataset
     """
     if "quality_flag" in ds.attrs:
@@ -79,19 +79,19 @@ def apply_quality_flag(ds):
 def read_mfdataset(fnames, variable_dict, debug=False):
     """
     Parameters
-    __________
+    ----------
     fnames : str
         Regular expression for input file paths.
 
     Returns
-    _______
+    -------
     xarray.Dataset
     """
     if debug:
         logging_level = logging.DEBUG
+        logging.basicConfig(stream=sys.stdout, level=logging_level)
     else:
         logging_level = logging.INFO
-    logging.basicConfig(stream=sys.stdout, level=logging_level)
 
     if isinstance(fnames, list):
         files = fnames
