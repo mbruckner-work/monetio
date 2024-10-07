@@ -37,6 +37,8 @@ def read_OMPS_nm(files):
                 else:
                     data_array = xr.concat([data_array, data], "x")
             except (KeyError, ValueError) as e:
+                # KeyError occurs when file exists but contains no data
+                # ValueError occurs when file cross-track dimensions are different than other files loaded
                 print(f"warning: skipping {filename}. {type(e).__name__} occured: {e}")
     if count == 0:
         raise RuntimeError(f"no files loaded from files={files}")
