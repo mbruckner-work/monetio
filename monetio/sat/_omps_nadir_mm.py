@@ -39,7 +39,7 @@ def read_OMPS_nm(files):
             except (KeyError, ValueError) as e:
                 # KeyError occurs in load when file exists but contains no data
                 # ValueError occurs in concat when file cross-track dimensions are different than other files loaded
-                print(f"warning: skipping {filename}. {type(e).__name__} occured: {e}")
+                print(f"warning: skipping {filename}. {type(e).__name__} occurred: {e}")
     if count == 0:
         raise RuntimeError(f"no files loaded from files={files}")
     return data_array
