@@ -35,7 +35,13 @@ def open_dataset(fname, convert_to_ppb=True, surf_only=False, **kwargs):
     return ds
 
 
-def open_mfdataset(fname, convert_to_ppb=True, surf_only=False, **kwargs):
+def open_mfdataset(
+    fname, 
+    convert_to_ppb=True, 
+    var_list=None,
+    surf_only=False, 
+    **kwargs
+):
     """Open a multiple file dataset from RAQMS output.
 
     Parameters
@@ -44,6 +50,10 @@ def open_mfdataset(fname, convert_to_ppb=True, surf_only=False, **kwargs):
         Files to be opened, expressed as a glob string or list of string paths.
     convert_to_ppb : boolean
         If true the units of the gas species will be converted to ppbv
+    var_list: list
+        List of variables to include in output. MELODIES-MONET only reads in
+        variables need to plot in order to save on memory and simulation cost
+        especially for vertical data. If None, will read in all model data.
         
     Returns
     -------
@@ -56,8 +66,11 @@ def open_mfdataset(fname, convert_to_ppb=True, surf_only=False, **kwargs):
             "in netCDF format."
             "Do not mix and match file types."
         )
-
-    ds = xr.open_mfdataset(names, concat_dim="time", drop_variables=["theta"], combine="nested")
+    if var_list is not None:
+        var_list.extend(['lat','lon',"IDATE", "Times","psfc","delp",'pdash'])
+        ds = xr.open_mfdataset(names, concat_dim="time", drop_variables=["theta"], combine="nested")[var_list]
+    else:
+        ds = xr.open_mfdataset(names, concat_dim="time", drop_variables=["theta"], combine="nested")
     ds = _fix(ds, surf_only=surf_only)
     
     # convert all gas species to ppbv
