@@ -206,7 +206,7 @@ def add_met_data_3D(d_chem, d_met):
             "var_desc": "pressure",
         }
     if ("z" in d_met.variables) or ("ZGRID_M" in d_met.variables):
-        d_chem["alt_agl_m_mid"], d_chem["layer_height_agl"] = _calc_midlayer_height_agl(d_met)
+        d_chem["alt_agl_m_mid"], d_chem["dz_m"] = _calc_midlayer_height_agl(d_met)
     else:
         warnings.warn("No altitude AGL was found.")
 
