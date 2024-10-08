@@ -51,7 +51,7 @@ def open_mfdataset(
     convert_to_ppb : boolean
         If true the units of the gas species will be converted to ppbv
     var_list: list
-        List of variables to include in output. MELODIES-MONET only reads in
+        List of variables to include in output. MELODIES-MONET should only read in
         variables need to plot in order to save on memory and simulation cost
         especially for vertical data. If None, will read in all model data.
         
