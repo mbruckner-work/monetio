@@ -206,7 +206,7 @@ def add_met_data_3D(d_chem, d_met):
             "var_desc": "pressure",
         }
     if ("z" in d_met.variables) or ("ZGRID_M" in d_met.variables):
-        d_chem["alt_agl_m_mid"], d_chem["layer_height_agl"] = _calc_midlayer_height_agl(d_met)
+        d_chem["alt_agl_m_mid"], d_chem["dz_m"] = _calc_midlayer_height_agl(d_met)
     else:
         warnings.warn("No altitude AGL was found.")
 
@@ -461,7 +461,7 @@ def _calc_midlayer_height_agl(dset):
 
     dz_m = xr.zeros_like(layer_height_agl)
     dz_m[:, 0, :, :] = layer_height_agl[:, 0, :, :].values
-    dz_m[:, 1:, :, :] = layer_height_agl[:, 1, :, :].values - layer_height_agl[:, :-1, :, :].values
+    dz_m[:, 1:, :, :] = layer_height_agl[:, 1:, :, :].values - layer_height_agl[:, :-1, :, :].values
     dz_m.attrs["long_name"] = "dz in meters"
     dz_m.attrs["var_desc"] = "Layer thickness in meters"
     return alt_agl_m_mid, layer_height_agl
