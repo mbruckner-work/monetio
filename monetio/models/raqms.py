@@ -9,14 +9,16 @@ More information: http://raqms-ops.ssec.wisc.edu/
 import xarray as xr
 
 
-def open_dataset(fname, *, surf_only=False):
+def open_dataset(fname, convert_to_ppb=True, surf_only=False, **kwargs):
     """Open a single dataset from RAQMS output. Currently expects netCDF file format.
 
     Parameters
     ----------
     fname : str
         File to be opened.
-
+    convert_to_ppb : boolean
+        If true the units of the gas species will be converted to ppbv
+        
     Returns
     -------
     xarray.Dataset
@@ -33,14 +35,16 @@ def open_dataset(fname, *, surf_only=False):
     return ds
 
 
-def open_mfdataset(fname, *, surf_only=False):
+def open_mfdataset(fname, convert_to_ppb=True, surf_only=False, **kwargs):
     """Open a multiple file dataset from RAQMS output.
 
     Parameters
     ----------
     fname : str or list of str
         Files to be opened, expressed as a glob string or list of string paths.
-
+    convert_to_ppb : boolean
+        If true the units of the gas species will be converted to ppbv
+        
     Returns
     -------
     xarray.Dataset
@@ -55,6 +59,14 @@ def open_mfdataset(fname, *, surf_only=False):
 
     ds = xr.open_mfdataset(names, concat_dim="time", drop_variables=["theta"], combine="nested")
     ds = _fix(ds, surf_only=surf_only)
+    
+    # convert all gas species to ppbv
+    if convert_to_ppb:
+        for i in ds.variables:
+            if "units" in ds[i].attrs:
+                if "ppv" in ds[i].attrs["units"]:
+                    ds[i] *= 1e9
+                    ds[i].attrs["units"] = "ppbv"
 
     return ds
 
