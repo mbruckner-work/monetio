@@ -105,7 +105,7 @@ def _open_one_dataset(fname, variable_dict):
             "temperature_profile",
             "amf",
             "amf_total",
-            "amf_diagnositc_flag",
+            "amf_diagnostic_flag",
             "eff_cloud_fraction",
             "amf_cloud_fraction",
             "amf_cloud_pressure",
