@@ -7,7 +7,7 @@ air quality models.
 
 MONET was developed to evaluate the Community Multiscale Air Quality Model (CMAQ)
 for the NOAA National Air Quality Forecast Capability (NAQFC) modeling system.
-From MONET version 2.1.4, MONETIO was broken off from MONET to be its own dedicated repository [#monetio-split]_.
+After MONET version 2.1.4, MONETIO was broken off from MONET to be its own dedicated repository [#monetio-split]_.
 MONETIO is built to work in unison with MONET. For more information on MONET please refer to
 https://monet-arl.readthedocs.io.
 
@@ -88,6 +88,8 @@ Supported datasets
 
 .. rubric:: Footnotes
 
-.. [#monetio-split] The last commit of [MONET v2.1.5](https://github.com/noaa-oar-arl/monet/releases/tag/v2.1.5)
-    merged noaa-oar-arl/monet#77, which brought the branch testing the split MONET and MONETIO packages into the
-    primary branch of the repository.
+.. [#monetio-split] The last commit of `MONET v2.1.5 <https://github.com/noaa-oar-arl/monet/releases/tag/v2.1.5>`__
+   merged `PR#77 <https://github.com/noaa-oar-arl/monet/pull/77>`__, which brought the branch testing the split MONET and MONETIO packages into the
+   primary branch of the repository.
+   The first official split GitHub releases with were `MONET v2.2.0 <https://github.com/noaa-oar-arl/monet/releases/tag/v2.2.0>`__
+   and `MONETIO v0.1 <https://github.com/noaa-oar-arl/monetio/releases/tag/v0.1>`__ (Mar 2020).
