@@ -18,7 +18,7 @@ def open_mfdataset(
     var_list=["o3"],
     surf_only=False,
     surf_only_nc=False,
-    **kwargs
+    **kwargs,
 ):
     """Method to open WRF-chem and RAP-chem netcdf files.
 
@@ -104,6 +104,33 @@ def open_mfdataset(
             )
             if var == "zstag":
                 var_wrf = var_wrf.rename("zstag")
+        elif var in {"uvmet10", "uvmet"}:
+            # These return u and v wind components in one variable
+            pref = var.split("_")[0]
+            var_wrf = getvar(wrflist, var, timeidx=ALL_TIMES, method="cat", squeeze=False)
+            var_wrf_list.extend(
+                [
+                    var_wrf.isel(u_v=0).rename(f"{pref}_u"),
+                    var_wrf.isel(u_v=1).rename(f"{pref}_v"),
+                ]
+            )
+            continue
+        elif var in {"uvmet10_wspd_wdir", "uvmet_wspd_wdir"}:
+            # These return wind speed and wind direction in one variable
+            pref = var.split("_")[0]
+            var_wrf = getvar(wrflist, var, timeidx=ALL_TIMES, method="cat", squeeze=False)
+            var_wrf_list.extend(
+                [
+                    var_wrf.isel(wspd_wdir=0).rename(f"{pref}_wspd"),
+                    var_wrf.isel(wspd_wdir=1).rename(f"{pref}_wdir"),
+                ]
+            )
+            continue
+        elif var in {"uvmet10_wspd", "uvmet10_wdir", "uvmet_wspd", "uvmet_wdir"}:
+            # These return a variable with _wspd_wdir suffix instead of the correct name
+            pref = var.split("_")[0]
+            var_wrf = getvar(wrflist, var, timeidx=ALL_TIMES, method="cat", squeeze=False)
+            var_wrf = var_wrf.rename(var)
         else:
             var_wrf = getvar(wrflist, var, timeidx=ALL_TIMES, method="cat", squeeze=False)
         var_wrf_list.append(var_wrf)
