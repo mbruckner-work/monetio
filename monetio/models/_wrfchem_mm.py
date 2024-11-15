@@ -128,7 +128,6 @@ def open_mfdataset(
             continue
         elif var in {"uvmet10_wspd", "uvmet10_wdir", "uvmet_wspd", "uvmet_wdir"}:
             # These return a variable with _wspd_wdir suffix instead of the correct name
-            pref = var.split("_")[0]
             var_wrf = getvar(wrflist, var, timeidx=ALL_TIMES, method="cat", squeeze=False)
             var_wrf = var_wrf.rename(var)
         else:
