@@ -122,7 +122,7 @@ def open_mfdataset(
             var_wrf_list.extend(
                 [
                     var_wrf.isel(wspd_wdir=0).rename(f"{pref}_wspd"),
-                    var_wrf.isel(wspd_wdir=1).rename(f"{pref}_wdir"),
+                    var_wrf.isel(wspd_wdir=1).rename(f"{pref}_wdir").assign_attrs(units="deg"),
                 ]
             )
             continue
@@ -130,6 +130,8 @@ def open_mfdataset(
             # These return a variable with _wspd_wdir suffix instead of the correct name
             var_wrf = getvar(wrflist, var, timeidx=ALL_TIMES, method="cat", squeeze=False)
             var_wrf = var_wrf.rename(var)
+            if var.endswith("_wdir"):
+                var_wrf = var_wrf.assign_attrs(units="deg")
         else:
             var_wrf = getvar(wrflist, var, timeidx=ALL_TIMES, method="cat", squeeze=False)
         var_wrf_list.append(var_wrf)
