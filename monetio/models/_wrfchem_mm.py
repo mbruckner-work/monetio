@@ -95,6 +95,12 @@ def open_mfdataset(
         # Additional defaults for satellite analysis
         var_list.append("zstag")  # 'height'
 
+    # Make sure we get 'temperature_k' if requested
+    if "temperature_k" in var_list:
+        var_list.remove("temperature_k")
+        if "tk" not in var_list:
+            var_list.append("tk")
+
     var_wrf_list = []
     for var in var_list:
         if var == "pres":  # Insert special versions.

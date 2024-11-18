@@ -18,7 +18,7 @@
         CMAQ model data including new CAf calculation
     # allvars = Series(["TEMP", "Q", "PRES"])
     #         "p": dset["PRES"][:].compute().values
-        var_list.append("pres")
+        var_list.append("pres")  # 'pressure'
         if var == "pres":  # Insert special versions.
         "SIZ",
                 df.loc[con, "variable"] = "Caf"
