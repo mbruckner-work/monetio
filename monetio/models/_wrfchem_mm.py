@@ -106,12 +106,11 @@ def open_mfdataset(
                 var_wrf = var_wrf.rename("zstag")
         elif var in {"uvmet10", "uvmet"}:
             # These return u and v wind components in one variable
-            pref = var.split("_")[0]
             var_wrf = getvar(wrflist, var, timeidx=ALL_TIMES, method="cat", squeeze=False)
             var_wrf_list.extend(
                 [
-                    var_wrf.isel(u_v=0).rename(f"{pref}_u"),
-                    var_wrf.isel(u_v=1).rename(f"{pref}_v"),
+                    var_wrf.isel(u_v=0).rename(f"{var}_u"),
+                    var_wrf.isel(u_v=1).rename(f"{var}_v"),
                 ]
             )
             continue
