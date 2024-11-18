@@ -82,15 +82,15 @@ def open_mfdataset(
     if not surf_only_nc:
         # Add some additional defaults needed for aircraft analysis
         # Turn this on also if need to convert aerosols
-        var_list.append("pres")
+        var_list.append("pres")  # 'pressure'
         var_list.append("height")
-        var_list.append("tk")
+        var_list.append("tk")  # 'temp'
         var_list.append("height_agl")
         var_list.append("PSFC")
         # need to calculate surface pressure and dp and optionally dz here.
 
         # Additional defaults for satellite analysis
-        var_list.append("zstag")
+        var_list.append("zstag")  # 'height'
 
     var_wrf_list = []
     for var in var_list:
