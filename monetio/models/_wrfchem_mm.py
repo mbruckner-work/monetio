@@ -15,7 +15,7 @@ def open_mfdataset(
     fname,
     convert_to_ppb=True,
     mech="racm_esrl_vcp",
-    var_list=["o3"],
+    var_list=None,
     surf_only=False,
     surf_only_nc=False,
     **kwargs,
@@ -53,6 +53,9 @@ def open_mfdataset(
     """
     from netCDF4 import Dataset
     from wrf import ALL_TIMES, extract_global_attrs, getvar
+
+    if var_list is None:
+        var_list = ["o3"]
 
     # Get dictionary of summed species for the mechanism of choice.
     dict_sum = dict_species_sums(mech=mech)
