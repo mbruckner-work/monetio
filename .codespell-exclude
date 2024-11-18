@@ -19,7 +19,7 @@
     # allvars = Series(["TEMP", "Q", "PRES"])
     #         "p": dset["PRES"][:].compute().values
         var_list.append("pres")  # 'pressure'
-        if var == "pres":  # Insert special versions.
+        if var == "pres":
         "SIZ",
                 df.loc[con, "variable"] = "Caf"
                 df.loc[con, "variable"] = "Laf"
