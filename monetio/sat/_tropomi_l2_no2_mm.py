@@ -103,8 +103,9 @@ def _open_one_dataset(fname, variable_dict):
             # Tropopause pressure
             ptrop = xr.full_like(itrop, np.nan, dtype=ds["preslev"].dtype)
             for i in np.unique(itrop):
-                if i >= 0 and i < p.sizes["z"]:
-                    ptrop = xr.where(itrop == i, p.isel(z=int(i)), ptrop)
+                if np.isnan(i) or i < 0 or i >= p.sizes["z"]:
+                    continue
+                ptrop = xr.where(itrop == i, p.isel(z=int(i)), ptrop)
             ds["troppres"] = ptrop
             ds["troppres"].attrs.update({"long_name": "tropopause pressure", "units": "Pa"})
 
