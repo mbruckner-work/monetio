@@ -74,8 +74,8 @@ def _open_one_dataset(filename):
     o3[np.where(d1 < d2)] = np.nan
     
     
-    data = xr.Dataset({'O3':(('x','z'),o3),},
-               coords={'latitude':(('x'),lat),'longitude':(('x'),lon),'time':(('x'),time),'z':(('z'),alt*1000)},
+    data = xr.Dataset({'O3':(('time','z'),o3),},
+               coords={'latitude':(('time'),lat),'longitude':(('time'),lon),'time':(('time'),time),'z':(('z'),alt*1000)},
                      attrs={'missing_value':-999,'reference_time_string':start_time},)
     return data
 
@@ -99,8 +99,5 @@ def open_dataset(fnames):
     for file in files:
         granule = _open_one_dataset(file)
         key = granule.attrs["reference_time_string"].strftime(r"%Y-%m-%d")
-        if key in granules:
-            granules[key].append(granule)
-        else:
-            granules[key] = [granule]
+        granules[key] = granule
     return granules

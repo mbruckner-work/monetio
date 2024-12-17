@@ -1,5 +1,6 @@
 from . import (
     _gridded_eos_mm,
+    _mls_l2_mm,
     _modis_l2_mm,
     _mopitt_l3_mm,
     _omps_l3_mm,
@@ -16,6 +17,7 @@ from . import (
 
 __all__ = [
     "_gridded_eos_mm",
+    "_mls_l2_mm",
     "_modis_l2_mm",
     "_mopitt_l3_mm",
     "_omps_l3_mm",
