@@ -36,9 +36,9 @@ def _open_one_dataset(filename):
     lon = f['GeolocationFields']['Longitude'][:]
     alt = f['DataFields']['Altitude'][:]
     
-    o3 = f['DataFields']['O3Value'][:]*1.38e-19*temperature/pressure/(10**(-6))
+    o3 = f['DataFields']['O3Value'][:]*1.38e-19*temperature/pressure/(10**(-9))
     o3_vres = f['DataFields']['VertRes_O3'][:]
-    o3_error = f['DataFields']['O3Precision'][:]*1.38e-19*temperature/pressure/(10**(-6))
+    o3_error = f['DataFields']['O3Precision'][:]*1.38e-19*temperature/pressure/(10**(-9))
     o3_qual = f['DataFields']['O3Quality'][:]
     
     # Recommended quality filters
@@ -74,8 +74,8 @@ def _open_one_dataset(filename):
     o3[np.where(d1 < d2)] = np.nan
     
     
-    data = xr.Dataset({'O3':(('time','z'),o3),},
-               coords={'latitude':(('time'),lat),'longitude':(('time'),lon),'time':(('time'),time),'z':(('z'),alt*1000)},
+    data = xr.Dataset({'O3':(('time','z'),o3,{'units':'ppbv'}),'pressure':(('time','z'),pressure*100,{'units':'Pa'}),},
+               coords={'latitude':(('time'),lat),'longitude':(('time'),lon),'time':(('time'),time),'z':(('z'),alt*1000,{'units':'m'})},
                      attrs={'missing_value':-999,'reference_time_string':start_time},)
     return data
 
