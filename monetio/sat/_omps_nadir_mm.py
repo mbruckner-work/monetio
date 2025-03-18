@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 def read_OMPS_nm(files):
     """Loop to open OMPS nadir mapper L2 files.
     Files can be pre-downloaded or streamed from NASA opendap server with list of urls.
@@ -12,17 +14,19 @@ def read_OMPS_nm(files):
 
     import xarray as xr
 
-    count = 0
+    
+    granules = OrderedDict()
+    
     # Check if files are url
     if "https" in files[0]:
         filelist = sorted(files)
         for filename in filelist:
             data = extract_OMPS_nm_opendap(filename)
-            if count == 0:
-                data_array = data
-                count += 1
+            key = data.time[0].dt.strftime('%Y%m%d').item()
+            if key in granules:
+                granules[key].append(data)
             else:
-                data_array = xr.concat([data_array, data], "x")
+                granules[key] = [data]
     else:  # using local files
         if isinstance(files, str):  # expansion of filestring to list
             filelist = sorted(glob(files, recursive=False))
@@ -31,18 +35,19 @@ def read_OMPS_nm(files):
         for filename in filelist:  # extract data
             try:
                 data = extract_OMPS_nm(filename)
-                if count == 0:
-                    data_array = data
-                    count += 1
+                key = data.time[0].dt.strftime('%Y%m%d').item()
+                print(key)
+                if key in granules:
+                    granules[key].append(data)
                 else:
-                    data_array = xr.concat([data_array, data], "x")
+                    granules[key] = [data]
             except (KeyError, ValueError) as e:
                 # KeyError occurs in load when file exists but contains no data
                 # ValueError occurs in concat when file cross-track dimensions are different than other files loaded
                 print(f"warning: skipping {filename}. {type(e).__name__} occurred: {e}")
-    if count == 0:
-        raise RuntimeError(f"no files loaded from files={files}")
-    return data_array
+    #if count == 0:
+    #    raise RuntimeError(f"no files loaded from files={files}")
+    return granules
 
 
 def extract_OMPS_nm_opendap(fname):
@@ -128,12 +133,15 @@ def extract_OMPS_nm(fname):
         time = f["GeolocationData"]["Time"][:]
         to3 = f["ScienceData"]["ColumnAmountO3"][:]
         lat = f["GeolocationData"]["Latitude"][:]
+        latb = f['GeolocationData']['LatitudeCorner'][:]
         lon = f["GeolocationData"]["Longitude"][:]
+        lonb = f['GeolocationData']['LongitudeCorner'][:]
         aprior = f["AncillaryData"]["APrioriLayerO3"][:]
         plevs = f["DimPressureLevel"][:]
         layere = f["ScienceData"]["LayerEfficiency"][:]
         flags = f["ScienceData"]["QualityFlags"][:]
         cloud_fraction = f["ScienceData"]["RadiativeCloudFraction"][:]
+
 
     to3[((to3 < 50.0) | (to3 > 700.0))] = np.nan
     layere[((layere < 0.0) | (layere > 10.0))] = 0
@@ -144,7 +152,7 @@ def extract_OMPS_nm(fname):
     to3[(cloud_fraction > 0.3)] = np.nan
     layere[(cloud_fraction > 0.3), :] = 0
     to3[(flags >= 138)] = np.nan
-
+    
     ds = xr.Dataset(
         {
             "ozone_column": (["x", "y"], to3),
@@ -153,7 +161,9 @@ def extract_OMPS_nm(fname):
         },
         coords={
             "longitude": (["x", "y"], lon),
+            "lon_b": (['x','y','bounds'],lonb),
             "latitude": (["x", "y"], lat),
+            "lat_b": (['x','y','bounds'],latb),
             "time": (["x"], time),
             "pressure": (["z"], plevs),
         },
