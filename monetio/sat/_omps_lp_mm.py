@@ -72,7 +72,7 @@ def _open_one_dataset(filename):
     # Remove data below cloud top
     d1,d2 = np.meshgrid(alt,cld)
     o3[np.where(d1 < d2)] = np.nan
-    
+
     data = xr.Dataset({'O3':(('time','z'),o3,{'units':'ppbv'}),'pressure':(('time','z'),pressure*100,{'units':'Pa'})},
                coords={'latitude':(('time'),lat),'longitude':(('time'),lon),'time':(('time'),time),'z':(('z'),alt*1000,{'units':'m'})},
                      attrs={'missing_value':-999,'reference_time_string':start_time},)
